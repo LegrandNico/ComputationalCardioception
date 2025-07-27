@@ -21,3 +21,7 @@ lint:
 	@echo "--- 🧹 Running linters ---"
 	uv run ruff format . 						        # running ruff formatting
 	uv run ruff check **/*.py --fix						# running ruff linting
+
+run-models:
+	@echo "--- 🧪 Running models ---"
+	uv run python code/run.py
