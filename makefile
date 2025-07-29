@@ -6,7 +6,7 @@ setup-env:
 	curl -LsSf https://astral.sh/uv/install.sh | sh
 	uv venv
 	bash -c "source .venv/bin/activate"
-	uv pip install -e ".[dev]"
+	uv sync
 
 run-jupyterlab:
 	uv run ipython kernel install --user --env VIRTUAL_ENV $(pwd)/.venv --name=computational_cardioception
@@ -24,4 +24,4 @@ lint:
 
 run-models:
 	@echo "--- 🧪 Running models ---"
-	uv run python code/run.py
+	bash scripts.sh

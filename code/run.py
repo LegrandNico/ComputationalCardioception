@@ -12,7 +12,7 @@ import arviz as az
 hrd_path = Path.cwd() / "data" / "hrd.csv"
 hrd_df = pd.read_csv(hrd_path, index_col=0, low_memory=False)
 hrd_df = hrd_df[~((hrd_df.cohort == "vmp1") & (hrd_df.task == "hrd-session1"))]
-hrd_df = hrd_df[hrd_df.participant_id.isin(hrd_df.participant_id.unique()[:2])]
+hrd_df = hrd_df[hrd_df.participant_id.isin(hrd_df.participant_id.unique())]
 
 # extract variables for the model ------------------------------------------------------
 n = hrd_df.participant_id.nunique()
@@ -42,7 +42,10 @@ extero_decision = (
 
 summary_df = pd.DataFrame({"participant_id": hrd_df.participant_id.unique()})
 
+print("Number of participants:", n)
+
 # 1 - Bayesian psychophysics model -----------------------------------------------------
+print("Running Bayesian psychophysics model...")
 idata_bayesian_psychophysics, bayesian_psychophysics_model = bayesian_psychophysics(
     heart_rate=heart_rate,
     intero_tone_2=intero_tone_2,
@@ -55,19 +58,23 @@ idata_bayesian_psychophysics, bayesian_psychophysics_model = bayesian_psychophys
     participant_codes_intero=participant_codes_intero,
 )
 
-# compute the log-likelihood
-pm.compute_log_likelihood(
-    idata_bayesian_psychophysics,
-    model=bayesian_psychophysics_model,
-)
-
 # only keep the variables of interest
+print("Keeping only the variables of interest...")
 vars_to_keep = ["intero_threshold", "intero_slope", "extero_threshold", "extero_slope"]
 idata_bayesian_psychophysics.posterior = idata_bayesian_psychophysics.posterior[
     vars_to_keep
 ]
 
+# compute the log-likelihood
+print("Computing log-likelihood...")
+pm.compute_log_likelihood(
+    idata_bayesian_psychophysics,
+    model=bayesian_psychophysics_model,
+    var_names=["bin_intero"],
+)
+
 # save the samples
+print("Saving the samples...")
 az.to_netcdf(
     idata_bayesian_psychophysics, Path().cwd() / "results" / "standard_model.nc"
 )
@@ -91,6 +98,7 @@ del idata_bayesian_psychophysics
 gc.collect()
 
 # 2 - Shared noise model ---------------------------------------------------------------
+print("Running shared perceptive noise model...")
 idata_shared_perceptive_noise, shared_perceptive_noise = shared_noise(
     heart_rate=heart_rate,
     intero_tone_2=intero_tone_2,
@@ -103,16 +111,22 @@ idata_shared_perceptive_noise, shared_perceptive_noise = shared_noise(
     participant_codes_intero=participant_codes_intero,
 )
 
-# compute the log-likelihood
-pm.compute_log_likelihood(idata_shared_perceptive_noise, model=shared_perceptive_noise)
-
 # only keep the variables of interest
+print("Keeping only the variables of interest...")
 vars_to_keep = ["intero_threshold", "intero_slope", "extero_threshold", "extero_slope"]
 idata_shared_perceptive_noise.posterior = idata_shared_perceptive_noise.posterior[
     vars_to_keep
 ]
+# compute the log-likelihood
+print("Computing log-likelihood...")
+pm.compute_log_likelihood(
+    idata_shared_perceptive_noise,
+    model=shared_perceptive_noise,
+    var_names=["bin_intero"],
+)
 
 # save the samples
+print("Saving the samples...")
 az.to_netcdf(
     idata_shared_perceptive_noise,
     Path().cwd() / "results" / "perceptive_noise.nc",
@@ -137,6 +151,7 @@ del idata_shared_perceptive_noise
 gc.collect()
 
 # 3 - Weighted update model ------------------------------------------------------------
+print("Running weighted Bayesian update model...")
 idata_weighted_update, weigthed_update_model = weighted_update(
     heart_rate=heart_rate,
     intero_tone_2=intero_tone_2,
@@ -149,19 +164,27 @@ idata_weighted_update, weigthed_update_model = weighted_update(
     participant_codes_intero=participant_codes_intero,
 )
 
-# compute the log-likelihood
-pm.compute_log_likelihood(idata_weighted_update, model=weigthed_update_model)
-
 # only keep the variables of interest
+print("Keeping only the variables of interest for weighted update model...")
 vars_to_keep = [
     "sensitivity",
     "mu_cardiac_prior",
     "sigma_cardiac_prior",
     "pi_cardiac_belief",
+    "extero_threshold",
+    "extero_slope",
+    "w",
 ]
 idata_weighted_update.posterior = idata_weighted_update.posterior[vars_to_keep]
 
+# compute the log-likelihood
+print("Computing log-likelihood for weighted update model...")
+pm.compute_log_likelihood(
+    idata_weighted_update, model=weigthed_update_model, var_names=["bin_intero"]
+)
+
 # save the samples
+print("Saving the samples for weighted update model...")
 az.to_netcdf(idata_weighted_update, Path().cwd() / "results" / "weighted_update.nc")
 
 # add the parameters to the summary dataframe
@@ -187,3 +210,4 @@ gc.collect()
 
 # save the summary dataframe
 summary_df.to_csv(Path().cwd() / "results" / "summary_df.csv")
+print("Completed all models and saved the summary dataframe.")

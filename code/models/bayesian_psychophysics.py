@@ -1,5 +1,8 @@
 # Author: Nicolas Legrand <nicolas.legrand@cas.au.dk>
 
+import pytensor
+
+pytensor.config.mode == "NUMBA"
 import pymc as pm
 import numpy as np
 from models.utils import cumulative_normal
@@ -51,7 +54,6 @@ def bayesian_psychophysics(
         idata = pm.sample(
             chains=4,
             cores=4,
-            tune=2000,
             draws=1000,
             return_inferencedata=True,
             nuts_sampler="nutpie",

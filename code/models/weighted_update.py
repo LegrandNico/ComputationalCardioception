@@ -1,5 +1,8 @@
 # Author: Nicolas Legrand <nicolas.legrand@cas.au.dk>
 
+import pytensor
+
+pytensor.config.mode == "NUMBA"
 import pymc as pm
 import numpy as np
 import pytensor.tensor as pt
@@ -95,7 +98,6 @@ def weighted_update(
         idata = pm.sample(
             chains=4,
             cores=4,
-            tune=1000,
             draws=1000,
             return_inferencedata=True,
             nuts_sampler="nutpie",
