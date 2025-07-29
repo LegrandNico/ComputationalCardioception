@@ -7,12 +7,20 @@ from pathlib import Path
 import numpy as np
 from models import bayesian_psychophysics, shared_noise, weighted_update
 import arviz as az
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--session', type=int, required=True)
+args = parser.parse_args()
 
 # load and filter the data -------------------------------------------------------------
 hrd_path = Path.cwd() / "data" / "hrd.csv"
 hrd_df = pd.read_csv(hrd_path, index_col=0, low_memory=False)
-hrd_df = hrd_df[~((hrd_df.cohort == "vmp1") & (hrd_df.task == "hrd-session1"))]
-hrd_df = hrd_df[hrd_df.participant_id.isin(hrd_df.participant_id.unique())]
+if args.session == 1:
+    hrd_df = hrd_df[((hrd_df.cohort == "vmp1") & (hrd_df.task == "hrd-session1"))]
+elif args.session == 2:
+    hrd_df = hrd_df[~((hrd_df.cohort == "vmp1") & (hrd_df.task == "hrd-session1"))]
+#hrd_df = hrd_df[hrd_df.participant_id.isin(hrd_df.participant_id.unique())]
 
 # extract variables for the model ------------------------------------------------------
 n = hrd_df.participant_id.nunique()
@@ -76,7 +84,7 @@ pm.compute_log_likelihood(
 # save the samples
 print("Saving the samples...")
 az.to_netcdf(
-    idata_bayesian_psychophysics, Path().cwd() / "results" / "standard_model.nc"
+    idata_bayesian_psychophysics, Path().cwd() / "results" / f"standard_model_{args.session}.nc"
 )
 
 # add the parameters to the summary dataframe
@@ -129,7 +137,7 @@ pm.compute_log_likelihood(
 print("Saving the samples...")
 az.to_netcdf(
     idata_shared_perceptive_noise,
-    Path().cwd() / "results" / "perceptive_noise.nc",
+    Path().cwd() / "results" / f"perceptive_noise_{args.session}.nc",
 )
 
 # add the parameters to the summary dataframe
@@ -185,7 +193,7 @@ pm.compute_log_likelihood(
 
 # save the samples
 print("Saving the samples for weighted update model...")
-az.to_netcdf(idata_weighted_update, Path().cwd() / "results" / "weighted_update.nc")
+az.to_netcdf(idata_weighted_update, Path().cwd() / "results" / f"weighted_update_{args.session}.nc")
 
 # add the parameters to the summary dataframe
 summary_df["wu_sensitivity"] = az.summary(
@@ -209,5 +217,5 @@ del idata_weighted_update
 gc.collect()
 
 # save the summary dataframe
-summary_df.to_csv(Path().cwd() / "results" / "summary_df.csv")
+summary_df.to_csv(Path().cwd() / "results" / f"summary_df_del_{args.session}.csv")
 print("Completed all models and saved the summary dataframe.")

@@ -2,3 +2,5 @@ __pycache__/
 .cache/
 *.pyc
 .ipynb_checkpoints
+*.nc
+output.log
