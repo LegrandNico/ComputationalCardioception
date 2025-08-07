@@ -21,6 +21,7 @@ dependencies = [
     "watermark",
     "ruff",
     "pingouin",
+    "tqdm",
 ]
 
 
