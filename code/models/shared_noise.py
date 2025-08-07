@@ -59,10 +59,9 @@ def shared_noise(
 
         idata = pm.sample(
             chains=4,
-            cores=4,
+            cores=1,
             draws=1000,
             return_inferencedata=True,
-            nuts_sampler="nutpie",
         )
 
     return idata, model

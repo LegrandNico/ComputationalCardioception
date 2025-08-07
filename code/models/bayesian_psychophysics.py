@@ -6,6 +6,7 @@ pytensor.config.mode == "NUMBA"
 import pymc as pm
 import numpy as np
 from models.utils import cumulative_normal
+import pytensor.tensor as pt
 
 
 def bayesian_psychophysics(
@@ -34,7 +35,6 @@ def bayesian_psychophysics(
                 extero_slope[participant_codes_extero],
             ),
         )
-        _ = pm.Binomial("bin_extero", p=theta_extero, n=1, observed=extero_decision)
 
         # interoception ------------------------------
         intero_threshold = pm.Uniform(
@@ -49,11 +49,20 @@ def bayesian_psychophysics(
                 intero_slope[participant_codes_intero],
             ),
         )
-        _ = pm.Binomial("bin_intero", p=theta_intero, n=1, observed=intero_decision)
+
+        thetas = pm.Deterministic(
+            "thetas", pt.concatenate([theta_extero, theta_intero])
+        )
+        _ = pm.Binomial(
+            "bin",
+            p=thetas,
+            n=1,
+            observed=np.append(extero_decision, intero_decision),
+        )
 
         idata = pm.sample(
             chains=4,
-            cores=4,
+            cores=1,
             draws=1000,
             return_inferencedata=True,
             nuts_sampler="nutpie",

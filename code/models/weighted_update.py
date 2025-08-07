@@ -27,20 +27,16 @@ def weighted_update(
     """Weighted Bayesian update for interoception trials."""
     with pm.Model() as model:
         # exteroception ------------------------------
-        extero_threshold = pm.Uniform(
-            "extero_threshold", lower=-50, upper=50, shape=(n,)
-        )
         extero_slope = pm.Uniform("extero_slope", lower=0.1, upper=30, shape=(n,))
         theta_extero = pm.Deterministic(
             "theta_extero",
-            cumulative_normal(
+            1
+            - cumulative_normal(
+                0,
                 extero_tone_2 - extero_tone_1,
-                extero_threshold[participant_codes_extero],
                 pt.sqrt(2 * extero_slope[participant_codes_extero] ** 2),
             ),
         )
-        _ = pm.Binomial("bin_extero", p=theta_extero, n=1, observed=extero_decision)
-
         # interoception ------------------------------
 
         # priors over cardiac beliefs
@@ -78,7 +74,7 @@ def weighted_update(
 
         _ = pm.Deterministic(
             "sensitivity",
-            (interoceptive_precision * w) / pi_cardiac_belief,
+            (w * interoceptive_precision) / pi_cardiac_belief,
         )
 
         theta_intero = pm.Deterministic(
@@ -88,12 +84,21 @@ def weighted_update(
                 0.0,
                 intero_tone_2 - mus_cardiac_belief,
                 pt.sqrt(
-                    (1 / pi_cardiac_belief[participant_codes_intero]) ** 2
+                    (1 / pi_cardiac_belief[participant_codes_intero])
                     + extero_slope[participant_codes_intero] ** 2
                 ),
             ),
         )
-        _ = pm.Binomial("bin_intero", p=theta_intero, n=1, observed=intero_decision)
+
+        thetas = pm.Deterministic(
+            "thetas", pt.concatenate([theta_extero, theta_intero])
+        )
+        _ = pm.Binomial(
+            "bin",
+            p=thetas,
+            n=1,
+            observed=np.append(extero_decision, intero_decision),
+        )
 
         idata = pm.sample(
             chains=4,
