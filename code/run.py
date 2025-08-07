@@ -17,7 +17,7 @@ import multiprocessing as mp
 from functools import partial
 
 
-def individual_fit(participant_id: str, session: int = 1):
+def individual_fit(participant_id: str, session: int, model: str):
     """Fit the models for each individual participant."""
     hrd_path = Path.cwd() / "data" / "hrd.csv"
     hrd_df = pd.read_csv(hrd_path, index_col=0, low_memory=False)
@@ -32,16 +32,15 @@ def individual_fit(participant_id: str, session: int = 1):
         ]
     elif session == 2:
         hrd_df = hrd_df[
-            ~(
-                (hrd_df.cohort == "vmp1")
-                & (hrd_df.task == "hrd-session1")
-                & (hrd_df.participant_id == participant_id)
-                & (~hrd_df.Decision.isnull())
-            )
+            ~((hrd_df.cohort == "vmp1") & (hrd_df.task == "hrd-session1"))
+            & (hrd_df.participant_id == participant_id)
+            & (~hrd_df.Decision.isnull())
         ]
 
     # extract variables for the model --------------------------------------------------
     n = hrd_df.participant_id.nunique()
+    if n != 1:
+        return
 
     participant_codes_intero = pd.Categorical(
         hrd_df[hrd_df.Modality == "Intero"].participant_id
@@ -64,52 +63,51 @@ def individual_fit(participant_id: str, session: int = 1):
     ).astype(int)
 
     # 1 - Bayesian psychophysics model -------------------------------------------------
-    print("Running Bayesian psychophysics model...")
-    idata_bayesian_psychophysics, bayesian_psychophysics_model = bayesian_psychophysics(
-        heart_rate=heart_rate,
-        intero_tone_2=intero_tone_2,
-        extero_tone_1=extero_tone_1,
-        extero_tone_2=extero_tone_2,
-        extero_decision=extero_decision,
-        intero_decision=intero_decision,
-        n=n,
-        participant_codes_extero=participant_codes_extero,
-        participant_codes_intero=participant_codes_intero,
-    )
+    if model == "all" or model == "bayesian_psychophysics":
+        idata_bayesian_psychophysics, bayesian_psychophysics_model = (
+            bayesian_psychophysics(
+                heart_rate=heart_rate,
+                intero_tone_2=intero_tone_2,
+                extero_tone_1=extero_tone_1,
+                extero_tone_2=extero_tone_2,
+                extero_decision=extero_decision,
+                intero_decision=intero_decision,
+                n=n,
+                participant_codes_extero=participant_codes_extero,
+                participant_codes_intero=participant_codes_intero,
+            )
+        )
 
-    # only keep the variables of interest
-    print("Keeping only the variables of interest...")
-    vars_to_keep = [
-        "intero_threshold",
-        "intero_slope",
-        "extero_threshold",
-        "extero_slope",
-    ]
-    idata_bayesian_psychophysics.posterior = idata_bayesian_psychophysics.posterior[
-        vars_to_keep
-    ]
+        # only keep the variables of interest
+        vars_to_keep = [
+            "intero_threshold",
+            "intero_slope",
+            "extero_threshold",
+            "extero_slope",
+        ]
+        idata_bayesian_psychophysics.posterior = idata_bayesian_psychophysics.posterior[
+            vars_to_keep
+        ]
 
-    # compute the log-likelihood
-    print("Computing log-likelihood...")
-    pm.compute_log_likelihood(
-        idata_bayesian_psychophysics,
-        model=bayesian_psychophysics_model,
-        var_names=["bin"],
-    )
+        # compute the log-likelihood
+        pm.compute_log_likelihood(
+            idata_bayesian_psychophysics,
+            model=bayesian_psychophysics_model,
+            var_names=["bin"],
+        )
 
-    # save the samples
-    print("Saving the samples...")
-    az.to_netcdf(
-        idata_bayesian_psychophysics,
-        Path().cwd()
-        / "results"
-        / "idata"
-        / f"standard_model_session{args.session}_{participant_id}.nc",
-    )
+        # save the samples
+        az.to_netcdf(
+            idata_bayesian_psychophysics,
+            Path().cwd()
+            / "results"
+            / "idata"
+            / f"standard_model_session{args.session}_{participant_id}.nc",
+        )
 
-    # clear memory
-    del idata_bayesian_psychophysics
-    gc.collect()
+        # clear memory
+        del idata_bayesian_psychophysics
+        gc.collect()
 
     # # 2 - Shared noise model ---------------------------------------------------------------
     # print("Running shared perceptive noise model...")
@@ -159,81 +157,81 @@ def individual_fit(participant_id: str, session: int = 1):
     # gc.collect()
 
     # 3 - Weighted update model ------------------------------------------------------------
-    print("Running weighted Bayesian update model...")
-    idata_weighted_update, weigthed_update_model = weighted_update(
-        heart_rate=heart_rate,
-        intero_tone_2=intero_tone_2,
-        extero_tone_1=extero_tone_1,
-        extero_tone_2=extero_tone_2,
-        extero_decision=extero_decision,
-        intero_decision=intero_decision,
-        n=n,
-        participant_codes_extero=participant_codes_extero,
-        participant_codes_intero=participant_codes_intero,
-    )
+    if model == "all" or model == "weighted_update":
+        idata_weighted_update, weigthed_update_model = weighted_update(
+            heart_rate=heart_rate,
+            intero_tone_2=intero_tone_2,
+            extero_tone_1=extero_tone_1,
+            extero_tone_2=extero_tone_2,
+            extero_decision=extero_decision,
+            intero_decision=intero_decision,
+            n=n,
+            participant_codes_extero=participant_codes_extero,
+            participant_codes_intero=participant_codes_intero,
+        )
 
-    # only keep the variables of interest
-    print("Keeping only the variables of interest for weighted update model...")
-    vars_to_keep = [
-        "sensitivity",
-        "mu_cardiac_prior",
-        "sigma_cardiac_prior",
-        "pi_cardiac_belief",
-        "extero_slope",
-        "w",
-    ]
-    idata_weighted_update.posterior = idata_weighted_update.posterior[vars_to_keep]
+        # only keep the variables of interest
+        vars_to_keep = [
+            "sensitivity",
+            "mu_cardiac_prior",
+            "sigma_cardiac_prior",
+            "pi_cardiac_belief",
+            "extero_slope",
+            "w",
+        ]
+        idata_weighted_update.posterior = idata_weighted_update.posterior[vars_to_keep]
 
-    # compute the log-likelihood
-    print("Computing log-likelihood for weighted update model...")
-    pm.compute_log_likelihood(
-        idata_weighted_update, model=weigthed_update_model, var_names=["bin"]
-    )
+        # compute the log-likelihood
+        pm.compute_log_likelihood(
+            idata_weighted_update, model=weigthed_update_model, var_names=["bin"]
+        )
 
-    # save the samples
-    print("Saving the samples for weighted update model...")
-    az.to_netcdf(
-        idata_weighted_update,
-        Path().cwd()
-        / "results"
-        / "idata"
-        / f"weighted_update_session{args.session}_{participant_id}.nc",
-    )
+        # save the samples
+        az.to_netcdf(
+            idata_weighted_update,
+            Path().cwd()
+            / "results"
+            / "idata"
+            / f"weighted_update_session{args.session}_{participant_id}.nc",
+        )
 
-    # clear memory
-    del idata_weighted_update
-    gc.collect()
+        # clear memory
+        del idata_weighted_update
+        gc.collect()
 
     # 4 - The cardiac HGF --------------------------------------------------------------
-    input_data_extero = (np.array([extero_tone_1, extero_tone_2]).T,)
-    input_data_intero = (np.array([heart_rate, intero_tone_2]).T,)
-    idata_cardiac_hgf, model_cardiac_hgf = sample_cardiac_hgf(
-        input_data_extero=input_data_extero,
-        input_data_intero=input_data_intero,
-        extero_decision=(extero_decision,),
-        intero_decision=(intero_decision,),
-        n=n,
-    )
+    if model == "all" or model == "cardiac_hgf":
+        input_data_extero = (np.array([extero_tone_1, extero_tone_2]).T,)
+        input_data_intero = (np.array([heart_rate, intero_tone_2]).T,)
+        try:
+            idata_cardiac_hgf, model_cardiac_hgf = sample_cardiac_hgf(
+                input_data_extero=input_data_extero,
+                input_data_intero=input_data_intero,
+                extero_decision=(extero_decision,),
+                intero_decision=(intero_decision,),
+                n=n,
+            )
 
-    # compute the log-likelihood
-    print("Computing log-likelihood for weighted update model...")
-    pm.compute_log_likelihood(
-        idata_cardiac_hgf, model=model_cardiac_hgf, var_names=["bin"]
-    )
-    # save the samples
-    print("Saving the samples for the cardiac HGF...")
-    az.to_netcdf(
-        idata_cardiac_hgf,
-        Path().cwd()
-        / "results"
-        / "idata"
-        / f"cardiac_hgf_session{args.session}_{participant_id}.nc",
-    )
+            # compute the log-likelihood
+            pm.compute_log_likelihood(
+                idata_cardiac_hgf, model=model_cardiac_hgf, var_names=["bin"]
+            )
+            # save the samples
+            az.to_netcdf(
+                idata_cardiac_hgf,
+                Path().cwd()
+                / "results"
+                / "idata"
+                / f"cardiac_hgf_session{args.session}_{participant_id}.nc",
+            )
+        except pm.exceptions.SamplingError:
+            pass
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--session", type=int, required=True)
+    parser.add_argument("--session", type=int, required=True, default=1)
+    parser.add_argument("--model", type=str, required=True, default="all")
     args = parser.parse_args()
 
     # load and filter the data -------------------------------------------------------------
@@ -244,60 +242,9 @@ if __name__ == "__main__":
     elif args.session == 2:
         hrd_df = hrd_df[~((hrd_df.cohort == "vmp1") & (hrd_df.task == "hrd-session1"))]
 
-    partial_fn = partial(individual_fit, session=args.session)
-    pool = mp.Pool(processes=3)
-    pool.map(individual_fit, hrd_df.participant_id.unique()[:5])
+    partial_fn = partial(individual_fit, session=args.session, model=args.model)
+    pool = mp.Pool(processes=25)
+    pool.map(partial_fn, hrd_df.participant_id.unique())
     pool.close()
 
     print("All reports generated successfully.")
-
-    #     # add the parameters to the summary dataframe
-    # summary_df["bp_intero_threshold"] = az.summary(
-    #     idata_bayesian_psychophysics, var_names=["intero_threshold"]
-    # )["mean"].to_list()
-    # summary_df["bp_extero_threshold"] = az.summary(
-    #     idata_bayesian_psychophysics, var_names=["extero_threshold"]
-    # )["mean"].to_list()
-    # summary_df["bp_intero_slope"] = az.summary(
-    #     idata_bayesian_psychophysics, var_names=["intero_slope"]
-    # )["mean"].to_list()
-    # summary_df["bp_intero_slope"] = az.summary(
-    #     idata_bayesian_psychophysics, var_names=["intero_slope"]
-    # )["mean"].to_list()
-
-    # # add the parameters to the summary dataframe
-    # summary_df["sn_intero_threshold"] = az.summary(
-    #     idata_shared_perceptive_noise, var_names=["intero_threshold"]
-    # )["mean"].to_list()
-    # summary_df["sn_extero_threshold"] = az.summary(
-    #     idata_shared_perceptive_noise, var_names=["extero_threshold"]
-    # )["mean"].to_list()
-    # summary_df["sn_intero_slope"] = az.summary(
-    #     idata_shared_perceptive_noise, var_names=["intero_slope"]
-    # )["mean"].to_list()
-    # summary_df["sn_extero_slope"] = az.summary(
-    #     idata_shared_perceptive_noise, var_names=["extero_slope"]
-    # )["mean"].to_list()
-
-    # # add the parameters to the summary dataframe
-    # summary_df["wu_sensitivity"] = az.summary(
-    #     idata_weighted_update, var_names=["sensitivity"]
-    # )["mean"].to_list()
-    # summary_df["wu_mu_cardiac_prior"] = az.summary(
-    #     idata_weighted_update, var_names=["mu_cardiac_prior"]
-    # )["mean"].to_list()
-    # summary_df["wu_sigma_cardiac_prior"] = az.summary(
-    #     idata_weighted_update, var_names=["sigma_cardiac_prior"]
-    # )["mean"].to_list()
-    # summary_df["wu_sigma_cardiac_prior"] = az.summary(
-    #     idata_weighted_update, var_names=["sigma_cardiac_prior"]
-    # )["mean"].to_list()
-    # summary_df["wu_pi_cardiac_belief"] = az.summary(
-    #     idata_weighted_update, var_names=["pi_cardiac_belief"]
-    # )["mean"].to_list()
-
-    #     summary_df = pd.DataFrame({"participant_id": hrd_df.participant_id.unique()})
-
-    # # save the summary dataframe
-    # summary_df.to_csv(Path().cwd() / "results" / f"summary_df_del_{args.session}.csv")
-    # print("Completed all models and saved the summary dataframe.")

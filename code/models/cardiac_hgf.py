@@ -315,17 +315,12 @@ def sample_cardiac_hgf(
         input_data_intero=input_data_intero,
     )
     with pm.Model() as model:
-        log_interoceptive_precision = pm.HalfNormal(
-            "log_interoceptive_precision", 10.0, shape=(n,)
+        interoceptive_precision = pm.Uniform(
+            "interoceptive_precision", 0.0, 10.0, shape=(n,)
         )
-        interoceptive_precision = pm.Deterministic(
-            "interoceptive_precision", pt.exp(-log_interoceptive_precision)
-        )
-        log_exteroceptive_precision = pm.HalfNormal(
-            "log_exteroceptive_precision", 10.0, shape=(n,)
-        )
-        exteroceptive_precision = pm.Deterministic(
-            "exteroceptive_precision", pt.exp(-log_exteroceptive_precision)
+
+        exteroceptive_precision = pm.Uniform(
+            "exteroceptive_precision", 0.0, 10.0, shape=(n,)
         )
 
         interoceptive_tonic_volatility = pm.Normal(
