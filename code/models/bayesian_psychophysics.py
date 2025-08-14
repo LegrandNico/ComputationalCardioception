@@ -20,7 +20,7 @@ def bayesian_psychophysics(
     participant_codes_extero: np.ndarray,
     participant_codes_intero: np.ndarray,
 ):
-    """Bayesian psychophysics model for exteroception and interoception trials."""
+    """Bayesian psychophysics model of cardiac interoception."""
     with pm.Model() as model:
         # exteroception ------------------------------
         extero_threshold = pm.Uniform(

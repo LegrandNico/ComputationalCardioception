@@ -7,7 +7,7 @@ import numpy as np
 from pathlib import Path
 from models import (
     bayesian_psychophysics,
-    shared_noise,
+    cardiac_believing,
     weighted_update,
     sample_cardiac_hgf,
 )
@@ -17,7 +17,7 @@ import multiprocessing as mp
 from functools import partial
 
 
-def individual_fit(participant_id: str, session: int, model: str):
+def individual_fit(participant_id: str, session: int, model: str, overwrite: bool):
     """Fit the models for each individual participant."""
     hrd_path = Path.cwd() / "data" / "hrd.csv"
     hrd_df = pd.read_csv(hrd_path, index_col=0, low_memory=False)
@@ -32,14 +32,17 @@ def individual_fit(participant_id: str, session: int, model: str):
         ]
     elif session == 2:
         hrd_df = hrd_df[
-            ~((hrd_df.cohort == "vmp1") & (hrd_df.task == "hrd-session1"))
+            (
+                ((hrd_df.cohort == "vmp1") & (hrd_df.task == "hrd-session2"))
+                | ((hrd_df.cohort == "vmp2") & (hrd_df.task == "hrd-session1"))
+            )
             & (hrd_df.participant_id == participant_id)
             & (~hrd_df.Decision.isnull())
         ]
 
     # extract variables for the model --------------------------------------------------
     n = hrd_df.participant_id.nunique()
-    if n != 1:
+    if (n != 1) or (len(hrd_df) < 20) or (len(hrd_df) > 160):
         return
 
     participant_codes_intero = pd.Categorical(
@@ -64,6 +67,13 @@ def individual_fit(participant_id: str, session: int, model: str):
 
     # 1 - Bayesian psychophysics model -------------------------------------------------
     if model == "all" or model == "bayesian_psychophysics":
+        if (
+            Path().cwd()
+            / "results"
+            / "idata"
+            / f"standard_model_session{args.session}_{participant_id}.nc"
+        ).exists() and not args.overwrite:
+            return
         idata_bayesian_psychophysics, bayesian_psychophysics_model = (
             bayesian_psychophysics(
                 heart_rate=heart_rate,
@@ -109,55 +119,65 @@ def individual_fit(participant_id: str, session: int, model: str):
         del idata_bayesian_psychophysics
         gc.collect()
 
-    # # 2 - Shared noise model ---------------------------------------------------------------
-    # print("Running shared perceptive noise model...")
-    # idata_shared_perceptive_noise, shared_perceptive_noise = shared_noise(
-    #     heart_rate=heart_rate,
-    #     intero_tone_2=intero_tone_2,
-    #     extero_tone_1=extero_tone_1,
-    #     extero_tone_2=extero_tone_2,
-    #     extero_decision=extero_decision,
-    #     intero_decision=intero_decision,
-    #     n=n,
-    #     participant_codes_extero=participant_codes_extero,
-    #     participant_codes_intero=participant_codes_intero,
-    # )
+    # 2 - Cardiac believing-------------------------------------------------------------
+    if model == "all" or model == "cardiac_believing":
+        if (
+            Path().cwd()
+            / "results"
+            / "idata"
+            / f"cardiac_believing_session{args.session}_{participant_id}.nc"
+        ).exists() and not args.overwrite:
+            return
+        idata_cardiac_believing, shared_perceptive_noise = cardiac_believing(
+            intero_tone_2=intero_tone_2,
+            extero_tone_1=extero_tone_1,
+            extero_tone_2=extero_tone_2,
+            extero_decision=extero_decision,
+            intero_decision=intero_decision,
+            n=n,
+            participant_codes_extero=participant_codes_extero,
+            participant_codes_intero=participant_codes_intero,
+        )
 
-    # # only keep the variables of interest
-    # print("Keeping only the variables of interest...")
-    # vars_to_keep = [
-    #     "intero_threshold",
-    #     "intero_slope",
-    #     "extero_threshold",
-    #     "extero_slope",
-    # ]
-    # idata_shared_perceptive_noise.posterior = idata_shared_perceptive_noise.posterior[
-    #     vars_to_keep
-    # ]
-    # # compute the log-likelihood
-    # print("Computing log-likelihood...")
-    # pm.compute_log_likelihood(
-    #     idata_shared_perceptive_noise,
-    #     model=shared_perceptive_noise,
-    #     var_names=["bin_intero"],
-    # )
+        # only keep the variables of interest
+        vars_to_keep = [
+            "intero_mean",
+            "intero_std",
+            "extero_threshold",
+            "extero_slope",
+        ]
+        idata_cardiac_believing.posterior = idata_cardiac_believing.posterior[
+            vars_to_keep
+        ]
+        # compute the log-likelihood
+        pm.compute_log_likelihood(
+            idata_cardiac_believing,
+            model=shared_perceptive_noise,
+            var_names=["bin"],
+        )
 
-    # # save the samples
-    # print("Saving the samples...")
-    # az.to_netcdf(
-    #     idata_shared_perceptive_noise,
-    #     Path().cwd()
-    #     / "results"
-    #     / "idata"
-    #     / f"perceptive_noise_session{args.session}_{participant_id}.nc",
-    # )
+        # save the samples
+        az.to_netcdf(
+            idata_cardiac_believing,
+            Path().cwd()
+            / "results"
+            / "idata"
+            / f"cardiac_believing_session{args.session}_{participant_id}.nc",
+        )
 
-    # # clear memory
-    # del idata_shared_perceptive_noise
-    # gc.collect()
+        # clear memory
+        del idata_cardiac_believing
+        gc.collect()
 
     # 3 - Weighted update model ------------------------------------------------------------
     if model == "all" or model == "weighted_update":
+        if (
+            Path().cwd()
+            / "results"
+            / "idata"
+            / f"weighted_update_session{args.session}_{participant_id}.nc"
+        ).exists() and not args.overwrite:
+            return
         idata_weighted_update, weigthed_update_model = weighted_update(
             heart_rate=heart_rate,
             intero_tone_2=intero_tone_2,
@@ -201,15 +221,21 @@ def individual_fit(participant_id: str, session: int, model: str):
 
     # 4 - The cardiac HGF --------------------------------------------------------------
     if model == "all" or model == "cardiac_hgf":
-        input_data_extero = (np.array([extero_tone_1, extero_tone_2]).T,)
-        input_data_intero = (np.array([heart_rate, intero_tone_2]).T,)
+        if (
+            Path().cwd()
+            / "results"
+            / "idata"
+            / f"cardiac_hgf_session{args.session}_{participant_id}.nc"
+        ).exists() and not args.overwrite:
+            return
+        input_data_extero = np.array([extero_tone_1, extero_tone_2]).T
+        input_data_intero = np.array([heart_rate, intero_tone_2]).T
         try:
             idata_cardiac_hgf, model_cardiac_hgf = sample_cardiac_hgf(
                 input_data_extero=input_data_extero,
                 input_data_intero=input_data_intero,
-                extero_decision=(extero_decision,),
-                intero_decision=(intero_decision,),
-                n=n,
+                extero_decision=extero_decision,
+                intero_decision=intero_decision,
             )
 
             # compute the log-likelihood
@@ -232,17 +258,23 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--session", type=int, required=True, default=1)
     parser.add_argument("--model", type=str, required=True, default="all")
+    parser.add_argument("--overwrite", type=bool, required=False, default=False)
     args = parser.parse_args()
 
     # load and filter the data -------------------------------------------------------------
     hrd_path = Path.cwd() / "data" / "hrd.csv"
     hrd_df = pd.read_csv(hrd_path, index_col=0, low_memory=False)
     if args.session == 1:
-        hrd_df = hrd_df[((hrd_df.cohort == "vmp1") & (hrd_df.task == "hrd-session1"))]
+        hrd_df = hrd_df[(hrd_df.cohort == "vmp1") & (hrd_df.task == "hrd-session1")]
     elif args.session == 2:
-        hrd_df = hrd_df[~((hrd_df.cohort == "vmp1") & (hrd_df.task == "hrd-session1"))]
+        hrd_df = hrd_df[
+            ((hrd_df.cohort == "vmp1") & (hrd_df.task == "hrd-session2"))
+            | ((hrd_df.cohort == "vmp2") & (hrd_df.task == "hrd-session1"))
+        ]
 
-    partial_fn = partial(individual_fit, session=args.session, model=args.model)
+    partial_fn = partial(
+        individual_fit, session=args.session, model=args.model, overwrite=args.overwrite
+    )
     pool = mp.Pool(processes=25)
     pool.map(partial_fn, hrd_df.participant_id.unique())
     pool.close()

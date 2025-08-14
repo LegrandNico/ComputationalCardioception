@@ -22,7 +22,7 @@ def cardiac_hgf(
     exteroceptive_mean: float,
     input_data_extero: np.ndarray,
     input_data_intero: np.ndarray,
-) -> tuple[Array, Array]:
+) -> Array:
     """Fit the cardiac hierarchical Gaussian filter to single participant."""
     # create new network structures for this participant
     extero_network = (
@@ -91,73 +91,24 @@ def cardiac_hgf(
         ),
     )
 
-    return (theta_extero, theta_intero)
-
-
-def group_level_cardiac_hgf(
-    interoceptive_precision: Array,
-    interoceptive_tonic_volatility: Array,
-    interoceptive_mean: Array,
-    exteroceptive_precision: Array,
-    exteroceptive_tonic_volatility: Array,
-    exteroceptive_mean: Array,
-    input_data_extero: tuple[ArrayLike, ArrayLike],
-    input_data_intero: tuple[ArrayLike, ArrayLike],
-):
-    """Fit the cardiac hierarchical Gaussian filter to group of participants."""
-    theta_extero, theta_intero = [], []
-    for (
-        interoceptive_precision_,
-        interoceptive_tonic_volatility_,
-        interoceptive_mean_,
-        exteroceptive_precision_,
-        exteroceptive_tonic_volatility_,
-        exteroceptive_mean_,
-        input_data_extero_,
-        input_data_intero_,
-    ) in zip(
-        interoceptive_precision,
-        interoceptive_tonic_volatility,
-        interoceptive_mean,
-        exteroceptive_precision,
-        exteroceptive_tonic_volatility,
-        exteroceptive_mean,
-        input_data_extero,
-        input_data_intero,
-    ):
-        # individual fits - here we store thetas (probabilities of decision)
-        # for each trials in the interoception and exteroception conditions
-        extero, intero = cardiac_hgf(
-            interoceptive_precision=interoceptive_precision_,
-            interoceptive_tonic_volatility=interoceptive_tonic_volatility_,
-            interoceptive_mean=interoceptive_mean_,
-            exteroceptive_precision=exteroceptive_precision_,
-            exteroceptive_tonic_volatility=exteroceptive_tonic_volatility_,
-            exteroceptive_mean=exteroceptive_mean_,
-            input_data_extero=input_data_extero_,
-            input_data_intero=input_data_intero_,
-        )
-        theta_extero.append(extero)
-        theta_intero.append(intero)
-
     return jnp.clip(
         jnp.append(jnp.array(theta_extero), jnp.array(theta_intero)), 1e-12, 1 - 1e-12
     )
 
 
 def get_cardiac_hgf_op(
-    input_data_extero: tuple[np.ndarray, ...],
-    input_data_intero: tuple[np.ndarray, ...],
+    input_data_extero: np.ndarray,
+    input_data_intero: np.ndarray,
 ):
     """Get the cardiac HGF custom operation."""
     # create the partial function for the group level cardiac HGF
-    partial_group_level_cardiac_hgf = Partial(
-        group_level_cardiac_hgf,
+    partial_cardiac_hgf = Partial(
+        cardiac_hgf,
         input_data_extero=input_data_extero,
         input_data_intero=input_data_intero,
     )
 
-    jitted_group_level_cardiac_hgf = jit(partial_group_level_cardiac_hgf)
+    jitted_cardiac_hgf = jit(partial_cardiac_hgf)
 
     def vjp_custom_op_jax(
         interoceptive_precision: ArrayLike,
@@ -170,7 +121,7 @@ def get_cardiac_hgf_op(
     ):
         """Get the custom vector Jacobian product for the group level cardiac HGF."""
         _, vjp_fn = vjp(
-            partial_group_level_cardiac_hgf,
+            partial_cardiac_hgf,
             interoceptive_precision,
             interoceptive_tonic_volatility,
             interoceptive_mean,
@@ -207,7 +158,6 @@ def get_cardiac_hgf_op(
                 pt.as_tensor_variable(exteroceptive_tonic_volatility),
                 pt.as_tensor_variable(exteroceptive_mean),
             ]
-            # Output has the same type and shape as `x`
             outputs = [pt.vector(dtype="float64")]
             return Apply(self, inputs, outputs)
 
@@ -215,7 +165,6 @@ def get_cardiac_hgf_op(
             """Perform the operation defined by the Op."""
             # Evaluate the Op result for a specific numerical input
 
-            # The inputs are always wrapped in a list
             (
                 interoceptive_precision,
                 interoceptive_tonic_volatility,
@@ -224,7 +173,7 @@ def get_cardiac_hgf_op(
                 exteroceptive_tonic_volatility,
                 exteroceptive_mean,
             ) = inputs
-            result = jitted_group_level_cardiac_hgf(
+            result = jitted_cardiac_hgf(
                 interoceptive_precision,
                 interoceptive_tonic_volatility,
                 interoceptive_mean,
@@ -269,7 +218,7 @@ def get_cardiac_hgf_op(
                 pt.as_tensor_variable(exteroceptive_mean),
                 pt.as_tensor_variable(cotangent),
             ]
-            outputs = [pt.vector(dtype="float64") for _ in range(6)]
+            outputs = [pt.scalar(dtype="float64") for _ in range(6)]
             return Apply(self, inputs, outputs)
 
         def perform(self, node, inputs, outputs):
@@ -303,11 +252,11 @@ def get_cardiac_hgf_op(
 
 
 def sample_cardiac_hgf(
-    input_data_extero: tuple[np.ndarray, ...],
-    input_data_intero: tuple[np.ndarray, ...],
-    extero_decision: tuple[np.ndarray, ...],
-    intero_decision: tuple[np.ndarray, ...],
-    n: int,
+    input_data_extero: np.ndarray,
+    input_data_intero: np.ndarray,
+    extero_decision: np.ndarray,
+    intero_decision: np.ndarray,
+    n_cores: int = 1,
 ):
     """Fit the cardiac hierarchical Gaussian filter to group of participants."""
     cardiac_hgf_op = get_cardiac_hgf_op(
@@ -316,22 +265,30 @@ def sample_cardiac_hgf(
     )
     with pm.Model() as model:
         interoceptive_precision = pm.Uniform(
-            "interoceptive_precision", 0.0, 10.0, shape=(n,)
+            "interoceptive_precision",
+            0.0,
+            2.0,
         )
 
         exteroceptive_precision = pm.Uniform(
-            "exteroceptive_precision", 0.0, 10.0, shape=(n,)
+            "exteroceptive_precision",
+            0.0,
+            2.0,
         )
 
         interoceptive_tonic_volatility = pm.Normal(
-            "interoceptive_tonic_volatility", 0.0, 50.0, shape=(n,)
+            "interoceptive_tonic_volatility",
+            0.0,
+            30.0,
         )
         exteroceptive_tonic_volatility = pm.Normal(
-            "exteroceptive_tonic_volatility", 0.0, 50.0, shape=(n,)
+            "exteroceptive_tonic_volatility",
+            0.0,
+            30.0,
         )
 
-        exteroceptive_mean = pm.Uniform("exteroceptive_mean", 15.0, 120.0, shape=(n,))
-        interoceptive_mean = pm.Uniform("interoceptive_mean", 15.0, 120.0, shape=(n,))
+        exteroceptive_mean = pm.Uniform("exteroceptive_mean", 10.0, 200.0)
+        interoceptive_mean = pm.Uniform("interoceptive_mean", 10.0, 200.0)
 
         thetas = pm.Deterministic(
             "thetas",
@@ -354,7 +311,7 @@ def sample_cardiac_hgf(
 
         idata = pm.sample(
             chains=4,
-            cores=1,
+            cores=n_cores,
             draws=1000,
             return_inferencedata=True,
         )
