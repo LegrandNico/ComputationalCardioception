@@ -27,14 +27,14 @@ def weighted_update(
     """Weighted Bayesian update for interoception trials."""
     with pm.Model() as model:
         # exteroception ------------------------------
-        extero_slope = pm.Uniform("extero_slope", lower=0.1, upper=30, shape=(n,))
+        extero_std = pm.Uniform("extero_std", lower=0.1, upper=30, shape=(n,))
         theta_extero = pm.Deterministic(
             "theta_extero",
             1
             - cumulative_normal(
                 0,
                 extero_tone_2 - extero_tone_1,
-                pt.sqrt(2 * extero_slope[participant_codes_extero] ** 2),
+                pt.sqrt(2 * extero_std[participant_codes_extero] ** 2),
             ),
         )
         # interoception ------------------------------
@@ -85,7 +85,7 @@ def weighted_update(
                 intero_tone_2 - mus_cardiac_belief,
                 pt.sqrt(
                     (1 / pi_cardiac_belief[participant_codes_intero])
-                    + extero_slope[participant_codes_intero] ** 2
+                    + extero_std[participant_codes_intero] ** 2
                 ),
             ),
         )

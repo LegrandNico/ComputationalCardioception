@@ -15,6 +15,9 @@ import arviz as az
 import argparse
 import multiprocessing as mp
 from functools import partial
+from jax import config
+
+config.update("jax_enable_x64", True)
 
 
 def individual_fit(participant_id: str, session: int, model: str, overwrite: bool):
@@ -71,8 +74,9 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
             Path().cwd()
             / "results"
             / "idata"
-            / f"standard_model_session{args.session}_{participant_id}.nc"
-        ).exists() and not args.overwrite:
+            / f"standard_model_session{session}_{participant_id}.nc"
+        ).exists() and not overwrite:
+            print(f"Standard model already exists, for {participant_id} skipping.")
             return
         idata_bayesian_psychophysics, bayesian_psychophysics_model = (
             bayesian_psychophysics(
@@ -108,11 +112,14 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
 
         # save the samples
         az.to_netcdf(
-            idata_bayesian_psychophysics,
+            az.InferenceData(
+                posterior=idata_bayesian_psychophysics.posterior,
+                log_likelihood=idata_bayesian_psychophysics.log_likelihood,
+            ),
             Path().cwd()
             / "results"
             / "idata"
-            / f"standard_model_session{args.session}_{participant_id}.nc",
+            / f"standard_model_session{session}_{participant_id}.nc",
         )
 
         # clear memory
@@ -125,8 +132,11 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
             Path().cwd()
             / "results"
             / "idata"
-            / f"cardiac_believing_session{args.session}_{participant_id}.nc"
-        ).exists() and not args.overwrite:
+            / f"cardiac_believing_session{session}_{participant_id}.nc"
+        ).exists() and not overwrite:
+            print(
+                f"Cardiac believing model already exists, for {participant_id} skipping."
+            )
             return
         idata_cardiac_believing, shared_perceptive_noise = cardiac_believing(
             intero_tone_2=intero_tone_2,
@@ -158,11 +168,14 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
 
         # save the samples
         az.to_netcdf(
-            idata_cardiac_believing,
+            az.InferenceData(
+                posterior=idata_cardiac_believing.posterior,
+                log_likelihood=idata_cardiac_believing.log_likelihood,
+            ),
             Path().cwd()
             / "results"
             / "idata"
-            / f"cardiac_believing_session{args.session}_{participant_id}.nc",
+            / f"cardiac_believing_session{session}_{participant_id}.nc",
         )
 
         # clear memory
@@ -175,8 +188,11 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
             Path().cwd()
             / "results"
             / "idata"
-            / f"weighted_update_session{args.session}_{participant_id}.nc"
-        ).exists() and not args.overwrite:
+            / f"weighted_update_session{session}_{participant_id}.nc"
+        ).exists() and not overwrite:
+            print(
+                f"Weighted update model already exists, for {participant_id} skipping."
+            )
             return
         idata_weighted_update, weigthed_update_model = weighted_update(
             heart_rate=heart_rate,
@@ -196,7 +212,7 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
             "mu_cardiac_prior",
             "sigma_cardiac_prior",
             "pi_cardiac_belief",
-            "extero_slope",
+            "extero_std",
             "w",
         ]
         idata_weighted_update.posterior = idata_weighted_update.posterior[vars_to_keep]
@@ -208,11 +224,14 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
 
         # save the samples
         az.to_netcdf(
-            idata_weighted_update,
+            az.InferenceData(
+                posterior=idata_weighted_update.posterior,
+                log_likelihood=idata_weighted_update.log_likelihood,
+            ),
             Path().cwd()
             / "results"
             / "idata"
-            / f"weighted_update_session{args.session}_{participant_id}.nc",
+            / f"weighted_update_session{session}_{participant_id}.nc",
         )
 
         # clear memory
@@ -225,8 +244,9 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
             Path().cwd()
             / "results"
             / "idata"
-            / f"cardiac_hgf_session{args.session}_{participant_id}.nc"
-        ).exists() and not args.overwrite:
+            / f"cardiac_hgf_session{session}_{participant_id}.nc"
+        ).exists() and not overwrite:
+            print(f"Cardiac HGF model already exists, for {participant_id} skipping.")
             return
         input_data_extero = np.array([extero_tone_1, extero_tone_2]).T
         input_data_intero = np.array([heart_rate, intero_tone_2]).T
@@ -244,11 +264,14 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
             )
             # save the samples
             az.to_netcdf(
-                idata_cardiac_hgf,
+                az.InferenceData(
+                    posterior=idata_cardiac_hgf.posterior,
+                    log_likelihood=idata_cardiac_hgf.log_likelihood,
+                ),
                 Path().cwd()
                 / "results"
                 / "idata"
-                / f"cardiac_hgf_session{args.session}_{participant_id}.nc",
+                / f"cardiac_hgf_session{session}_{participant_id}.nc",
             )
         except pm.exceptions.SamplingError:
             pass
@@ -258,7 +281,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--session", type=int, required=True, default=1)
     parser.add_argument("--model", type=str, required=True, default="all")
-    parser.add_argument("--overwrite", type=bool, required=False, default=False)
+    parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
 
     # load and filter the data -------------------------------------------------------------

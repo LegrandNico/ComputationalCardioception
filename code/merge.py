@@ -1,3 +1,5 @@
+# Author: Nicolas Legrand <nicolas.legrand@cas.au.dk>
+
 import arviz as az
 import pandas as pd
 from pathlib import Path
@@ -8,12 +10,147 @@ hrd_path = Path.cwd() / "data" / "hrd.csv"
 hrd_df = pd.read_csv(hrd_path, index_col=0, low_memory=False)
 participants_list = hrd_df.participant_id.unique()
 
+# standard model -----------------------------------------------------------------------
+
+# # Initialize an empty DataFrame to store the summary
+# standard_model_df = pd.DataFrame()
+
+# for participant_id in tqdm(participants_list):
+#     for session in [1, 2]:
+#         path = (
+#             Path.cwd()
+#             / "results"
+#             / "idata"
+#             / f"standard_model_session{session}_{participant_id}.nc"
+#         )
+
+#         if path.exists():
+#             idata_standard = az.from_netcdf(path)
+
+#             posterior = az.extract(idata_standard, group="posterior")
+#             extero_threshold = posterior["extero_threshold"].mean(dim="sample").values
+#             extero_slope = posterior["extero_slope"].mean(dim="sample").values
+#             intero_threshold = posterior["intero_threshold"].mean(dim="sample").values
+#             intero_slope = posterior["intero_slope"].mean(dim="sample").values
+
+#             standard_model_df = pd.concat(
+#                 [
+#                     standard_model_df,
+#                     pd.DataFrame(
+#                         {
+#                             "participant_id": [participant_id],
+#                             "session": [session],
+#                             "extero_threshold": extero_threshold,
+#                             "extero_slope": extero_slope,
+#                             "intero_threshold": intero_threshold,
+#                             "intero_slope": intero_slope,
+#                         }
+#                     ),
+#                 ],
+#                 ignore_index=True,
+#             )
+
+
+# standard_model_df.to_csv(
+#     Path.cwd() / "results" / "standard_model_summary.csv", index=False
+# )
+
+
+# Cardiac believing --------------------------------------------------------------------
+
+# Initialize an empty DataFrame to store the summary
+cardiac_believing_df = pd.DataFrame()
+
+for participant_id in tqdm(participants_list):
+    for session in [1, 2]:
+        path = (
+            Path.cwd()
+            / "results"
+            / "idata"
+            / f"cardiac_believing_session{session}_{participant_id}.nc"
+        )
+
+        if path.exists():
+            idata_cardiac_believing = az.from_netcdf(path)
+
+            posterior = az.extract(idata_cardiac_believing, group="posterior")
+            intero_mean = posterior["intero_mean"].mean(dim="sample").values
+            intero_std = posterior["intero_std"].mean(dim="sample").values
+
+            cardiac_believing_df = pd.concat(
+                [
+                    cardiac_believing_df,
+                    pd.DataFrame(
+                        {
+                            "participant_id": [participant_id],
+                            "session": [session],
+                            "intero_mean": intero_mean,
+                            "intero_std": intero_std,
+                        }
+                    ),
+                ],
+                ignore_index=True,
+            )
+
+
+cardiac_believing_df.to_csv(
+    Path.cwd() / "results" / "cardiac_believing_summary.csv", index=False
+)
+
+# Weighted update ----------------------------------------------------------------------
+
+# Initialize an empty DataFrame to store the summary
+weighted_update_df = pd.DataFrame()
+
+for participant_id in tqdm(participants_list):
+    for session in [1, 2]:
+        path = (
+            Path.cwd()
+            / "results"
+            / "idata"
+            / f"weighted_update_session{session}_{participant_id}.nc"
+        )
+
+        if path.exists():
+            idata_weighted_update = az.from_netcdf(path)
+
+            posterior = az.extract(idata_weighted_update, group="posterior")
+            sensitivity = posterior["sensitivity"].mean(dim="sample").values
+            pi_cardiac_belief = posterior["pi_cardiac_belief"].mean(dim="sample").values
+            sigma_cardiac_prior = (
+                posterior["sigma_cardiac_prior"].mean(dim="sample").values
+            )
+            mu_cardiac_prior = posterior["mu_cardiac_prior"].mean(dim="sample").values
+
+            weighted_update_df = pd.concat(
+                [
+                    weighted_update_df,
+                    pd.DataFrame(
+                        {
+                            "participant_id": [participant_id],
+                            "session": [session],
+                            "sensitivity": sensitivity,
+                            "pi_cardiac_belief": pi_cardiac_belief,
+                            "sigma_cardiac_prior": sigma_cardiac_prior,
+                            "mu_cardiac_prior": mu_cardiac_prior,
+                        }
+                    ),
+                ],
+                ignore_index=True,
+            )
+
+
+weighted_update_df.to_csv(
+    Path.cwd() / "results" / "weighted_update_summary.csv", index=False
+)
+
+# Cardiac HGF --------------------------------------------------------------------------
+
 # Initialize an empty DataFrame to store the summary
 cardiac_hgf_df = pd.DataFrame()
 
 for participant_id in tqdm(participants_list):
     for session in [1, 2]:
-        # Cardiac HGF model ------------------------------------------------------------
         path = (
             Path.cwd()
             / "results"
@@ -44,9 +181,19 @@ for participant_id in tqdm(participants_list):
             interoceptive_sensitivity = interoceptive_precision / (
                 interoceptive_precision + pi_1
             )
+
+            # use the logit of the sensitivity
+            logit_interoceptive_sensitivity = np.log(interoceptive_precision) - np.log(
+                pi_1
+            )
+
             pi_1 = 1.0 / (1.0 + np.exp(exteroceptive_tonic_volatility))
             exteroceptive_sensitivity = exteroceptive_precision / (
                 exteroceptive_precision + pi_1
+            )
+            # use the logit of the sensitivity
+            logit_exteroceptive_sensitivity = np.log(exteroceptive_precision) - np.log(
+                pi_1
             )
 
             cardiac_hgf_df = pd.concat(
@@ -68,6 +215,8 @@ for participant_id in tqdm(participants_list):
                             .values,
                             "interoceptive_sensitivity": interoceptive_sensitivity,
                             "exteroceptive_sensitivity": exteroceptive_sensitivity,
+                            "logit_interoceptive_sensitivity": logit_interoceptive_sensitivity,
+                            "logit_exteroceptive_sensitivity": logit_exteroceptive_sensitivity,
                         }
                     ),
                 ],
@@ -76,55 +225,6 @@ for participant_id in tqdm(participants_list):
 
 
 cardiac_hgf_df.to_csv(Path.cwd() / "results" / "cardiac_hgf_summary.csv", index=False)
+
+
 print("Completed all models and saved the summary dataframe.")
-
-
-#     # add the parameters to the summary dataframe
-#     summary_df["bp_intero_threshold"] = az.summary(
-#         idata_bayesian_psychophysics, var_names=["intero_threshold"]
-#     )["mean"].to_list()
-#     summary_df["bp_extero_threshold"] = az.summary(
-#         idata_bayesian_psychophysics, var_names=["extero_threshold"]
-#     )["mean"].to_list()
-#     summary_df["bp_intero_slope"] = az.summary(
-#         idata_bayesian_psychophysics, var_names=["intero_slope"]
-#     )["mean"].to_list()
-#     summary_df["bp_intero_slope"] = az.summary(
-#         idata_bayesian_psychophysics, var_names=["intero_slope"]
-#     )["mean"].to_list()
-
-#     # add the parameters to the summary dataframe
-#     summary_df["sn_intero_threshold"] = az.summary(
-#         idata_shared_perceptive_noise, var_names=["intero_threshold"]
-#     )["mean"].to_list()
-#     summary_df["sn_extero_threshold"] = az.summary(
-#         idata_shared_perceptive_noise, var_names=["extero_threshold"]
-#     )["mean"].to_list()
-#     summary_df["sn_intero_slope"] = az.summary(
-#         idata_shared_perceptive_noise, var_names=["intero_slope"]
-#     )["mean"].to_list()
-#     summary_df["sn_extero_slope"] = az.summary(
-#         idata_shared_perceptive_noise, var_names=["extero_slope"]
-#     )["mean"].to_list()
-
-#     # add the parameters to the summary dataframe
-#     summary_df["wu_sensitivity"] = az.summary(
-#         idata_weighted_update, var_names=["sensitivity"]
-#     )["mean"].to_list()
-#     summary_df["wu_mu_cardiac_prior"] = az.summary(
-#         idata_weighted_update, var_names=["mu_cardiac_prior"]
-#     )["mean"].to_list()
-#     summary_df["wu_sigma_cardiac_prior"] = az.summary(
-#         idata_weighted_update, var_names=["sigma_cardiac_prior"]
-#     )["mean"].to_list()
-#     summary_df["wu_sigma_cardiac_prior"] = az.summary(
-#         idata_weighted_update, var_names=["sigma_cardiac_prior"]
-#     )["mean"].to_list()
-#     summary_df["wu_pi_cardiac_belief"] = az.summary(
-#         idata_weighted_update, var_names=["pi_cardiac_belief"]
-#     )["mean"].to_list()
-
-#         summary_df = pd.DataFrame({"participant_id": hrd_df.participant_id.unique()})
-
-# # save the summary dataframe
-# summary_df.to_csv(Path().cwd() / "results" / f"summary_df_del_{args.session}.csv")
