@@ -12,48 +12,48 @@ participants_list = hrd_df.participant_id.unique()
 
 # standard model -----------------------------------------------------------------------
 
-# # Initialize an empty DataFrame to store the summary
-# standard_model_df = pd.DataFrame()
+# Initialize an empty DataFrame to store the summary
+standard_model_df = pd.DataFrame()
 
-# for participant_id in tqdm(participants_list):
-#     for session in [1, 2]:
-#         path = (
-#             Path.cwd()
-#             / "results"
-#             / "idata"
-#             / f"standard_model_session{session}_{participant_id}.nc"
-#         )
+for participant_id in tqdm(participants_list):
+    for session in [1, 2]:
+        path = (
+            Path.cwd()
+            / "results"
+            / "idata"
+            / f"standard_model_session{session}_{participant_id}.nc"
+        )
 
-#         if path.exists():
-#             idata_standard = az.from_netcdf(path)
+        if path.exists():
+            idata_standard = az.from_netcdf(path)
 
-#             posterior = az.extract(idata_standard, group="posterior")
-#             extero_threshold = posterior["extero_threshold"].mean(dim="sample").values
-#             extero_slope = posterior["extero_slope"].mean(dim="sample").values
-#             intero_threshold = posterior["intero_threshold"].mean(dim="sample").values
-#             intero_slope = posterior["intero_slope"].mean(dim="sample").values
+            posterior = az.extract(idata_standard, group="posterior")
+            extero_threshold = posterior["extero_threshold"].mean(dim="sample").values
+            extero_slope = posterior["extero_slope"].mean(dim="sample").values
+            intero_threshold = posterior["intero_threshold"].mean(dim="sample").values
+            intero_slope = posterior["intero_slope"].mean(dim="sample").values
 
-#             standard_model_df = pd.concat(
-#                 [
-#                     standard_model_df,
-#                     pd.DataFrame(
-#                         {
-#                             "participant_id": [participant_id],
-#                             "session": [session],
-#                             "extero_threshold": extero_threshold,
-#                             "extero_slope": extero_slope,
-#                             "intero_threshold": intero_threshold,
-#                             "intero_slope": intero_slope,
-#                         }
-#                     ),
-#                 ],
-#                 ignore_index=True,
-#             )
+            standard_model_df = pd.concat(
+                [
+                    standard_model_df,
+                    pd.DataFrame(
+                        {
+                            "participant_id": [participant_id],
+                            "session": [session],
+                            "extero_threshold": extero_threshold,
+                            "extero_slope": extero_slope,
+                            "intero_threshold": intero_threshold,
+                            "intero_slope": intero_slope,
+                        }
+                    ),
+                ],
+                ignore_index=True,
+            )
 
 
-# standard_model_df.to_csv(
-#     Path.cwd() / "results" / "standard_model_summary.csv", index=False
-# )
+standard_model_df.to_csv(
+    Path.cwd() / "results" / "standard_model_summary.csv", index=False
+)
 
 
 # Cardiac believing --------------------------------------------------------------------
