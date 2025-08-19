@@ -122,6 +122,12 @@ for participant_id in tqdm(participants_list):
             )
             mu_cardiac_prior = posterior["mu_cardiac_prior"].mean(dim="sample").values
 
+            logit_interoceptive_sensitivity = (
+                np.log(sensitivity)
+                + np.log(pi_cardiac_belief)
+                + np.log((1 / sigma_cardiac_prior**2) - sensitivity * pi_cardiac_belief)
+            )
+
             weighted_update_df = pd.concat(
                 [
                     weighted_update_df,
@@ -133,6 +139,7 @@ for participant_id in tqdm(participants_list):
                             "pi_cardiac_belief": pi_cardiac_belief,
                             "sigma_cardiac_prior": sigma_cardiac_prior,
                             "mu_cardiac_prior": mu_cardiac_prior,
+                            "logit_interoceptive_sensitivity": mu_cardiac_prior,
                         }
                     ),
                 ],

@@ -54,18 +54,18 @@ def weighted_bayesian_update_mean(
     pi_0: Union[float, np.ndarray, TensorVariable],
     pi_1: Union[float, np.ndarray, TensorVariable],
     pi: Union[float, np.ndarray, TensorVariable],
-    lam: Union[float, np.ndarray, TensorVariable],
+    omega: Union[float, np.ndarray, TensorVariable],
 ):
     """Weighted Bayesian update for the mean of a distribution."""
-    mu = ((1 - lam) * mu_0 * pi_0 + lam * mu_1 * pi_1) / pi
+    mu = ((1 - omega) * mu_0 * pi_0 + omega * mu_1 * pi_1) / pi
     return mu
 
 
 def weighted_bayesian_update_precision(
     pi_0: Union[float, np.ndarray, TensorVariable],
     pi_1: Union[float, np.ndarray, TensorVariable],
-    lam: Union[float, np.ndarray, TensorVariable],
+    omega: Union[float, np.ndarray, TensorVariable],
 ):
     """Weighted Bayesian update for the precision of a distribution."""
-    pi = (1 - lam) * pi_0 + lam * pi_1
+    pi = (1 - omega) * pi_0 + omega * pi_1
     return pi

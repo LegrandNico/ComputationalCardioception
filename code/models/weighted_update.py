@@ -56,7 +56,7 @@ def weighted_update(
             weighted_bayesian_update_precision(
                 pi_0=1 / (sigma_cardiac_prior**2),
                 pi_1=interoceptive_precision,
-                lam=w,
+                omega=w,
             ),
         )
 
@@ -68,7 +68,7 @@ def weighted_update(
                 pi_0=1 / (sigma_cardiac_prior[participant_codes_intero] ** 2),
                 pi_1=interoceptive_precision,
                 pi=pi_cardiac_belief[participant_codes_intero],
-                lam=w[participant_codes_intero],
+                omega=w[participant_codes_intero],
             ),
         )
 
