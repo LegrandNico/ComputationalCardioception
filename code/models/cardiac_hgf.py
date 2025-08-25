@@ -263,6 +263,10 @@ def sample_cardiac_hgf(
         input_data_extero=input_data_extero,
         input_data_intero=input_data_intero,
     )
+
+    mask = np.append(
+        np.ones(input_data_extero.shape[0]), np.zeros(input_data_intero.shape[0])
+    ).astype(bool)
     with pm.Model() as model:
         interoceptive_precision = pm.Uniform(
             "interoceptive_precision",
@@ -303,10 +307,16 @@ def sample_cardiac_hgf(
         )
 
         _ = pm.Binomial(
-            "bin",
-            p=thetas,
+            "bin_extero",
+            p=thetas[mask],
             n=1,
-            observed=np.append(extero_decision, intero_decision),
+            observed=extero_decision,
+        )
+        _ = pm.Binomial(
+            "bin_intero",
+            p=thetas[~mask],
+            n=1,
+            observed=intero_decision,
         )
 
         idata = pm.sample(

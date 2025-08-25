@@ -37,6 +37,14 @@ def weighted_update(
                 pt.sqrt(2 * extero_std[participant_codes_extero] ** 2),
             ),
         )
+
+        _ = pm.Binomial(
+            "bin_extero",
+            p=theta_extero,
+            n=1,
+            observed=extero_decision,
+        )
+
         # interoception ------------------------------
 
         # priors over cardiac beliefs
@@ -90,14 +98,11 @@ def weighted_update(
             ),
         )
 
-        thetas = pm.Deterministic(
-            "thetas", pt.concatenate([theta_extero, theta_intero])
-        )
         _ = pm.Binomial(
-            "bin",
-            p=thetas,
+            "bin_intero",
+            p=theta_intero,
             n=1,
-            observed=np.append(extero_decision, intero_decision),
+            observed=intero_decision,
         )
 
         idata = pm.sample(

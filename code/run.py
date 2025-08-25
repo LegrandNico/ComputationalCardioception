@@ -107,7 +107,7 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
         pm.compute_log_likelihood(
             idata_bayesian_psychophysics,
             model=bayesian_psychophysics_model,
-            var_names=["bin"],
+            var_names=["bin_intero"],
         )
 
         # save the samples
@@ -163,7 +163,7 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
         pm.compute_log_likelihood(
             idata_cardiac_believing,
             model=shared_perceptive_noise,
-            var_names=["bin"],
+            var_names=["bin_intero"],
         )
 
         # save the samples
@@ -219,7 +219,7 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
 
         # compute the log-likelihood
         pm.compute_log_likelihood(
-            idata_weighted_update, model=weigthed_update_model, var_names=["bin"]
+            idata_weighted_update, model=weigthed_update_model, var_names=["bin_intero"]
         )
 
         # save the samples
@@ -250,6 +250,7 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
             return
         input_data_extero = np.array([extero_tone_1, extero_tone_2]).T
         input_data_intero = np.array([heart_rate, intero_tone_2]).T
+
         try:
             idata_cardiac_hgf, model_cardiac_hgf = sample_cardiac_hgf(
                 input_data_extero=input_data_extero,
@@ -260,7 +261,7 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
 
             # compute the log-likelihood
             pm.compute_log_likelihood(
-                idata_cardiac_hgf, model=model_cardiac_hgf, var_names=["bin"]
+                idata_cardiac_hgf, model=model_cardiac_hgf, var_names=["bin_intero"]
             )
             # save the samples
             az.to_netcdf(
@@ -299,7 +300,7 @@ if __name__ == "__main__":
         individual_fit, session=args.session, model=args.model, overwrite=args.overwrite
     )
     pool = mp.Pool(processes=25)
-    pool.map(partial_fn, hrd_df.participant_id.unique())
+    pool.map(partial_fn, hrd_df.participant_id.unique()[:2])
     pool.close()
 
     print("All reports generated successfully.")

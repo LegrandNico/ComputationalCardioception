@@ -36,6 +36,13 @@ def bayesian_psychophysics(
             ),
         )
 
+        _ = pm.Binomial(
+            "bin_extero",
+            p=theta_extero,
+            n=1,
+            observed=extero_decision,
+        )
+
         # interoception ------------------------------
         intero_threshold = pm.Uniform(
             "intero_threshold", lower=-50, upper=50, shape=(n,)
@@ -50,14 +57,11 @@ def bayesian_psychophysics(
             ),
         )
 
-        thetas = pm.Deterministic(
-            "thetas", pt.concatenate([theta_extero, theta_intero])
-        )
         _ = pm.Binomial(
-            "bin",
-            p=thetas,
+            "bin_intero",
+            p=theta_intero,
             n=1,
-            observed=np.append(extero_decision, intero_decision),
+            observed=intero_decision,
         )
 
         idata = pm.sample(

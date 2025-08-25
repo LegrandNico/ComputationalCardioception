@@ -5,7 +5,6 @@ import pytensor
 pytensor.config.mode == "NUMBA"
 import pymc as pm
 import numpy as np
-import pytensor.tensor as pt
 from models.utils import cumulative_normal
 
 
@@ -35,6 +34,13 @@ def cardiac_believing(
             ),
         )
 
+        _ = pm.Binomial(
+            "bin_extero",
+            p=theta_extero,
+            n=1,
+            observed=extero_decision,
+        )
+
         # interoception ------------------------------
         intero_mean = pm.Uniform("intero_mean", lower=5, upper=200, shape=(n,))
         intero_std = pm.Uniform("intero_std", lower=0.1, upper=60, shape=(n,))
@@ -47,14 +53,11 @@ def cardiac_believing(
             ),
         )
 
-        thetas = pm.Deterministic(
-            "thetas", pt.concatenate([theta_extero, theta_intero])
-        )
         _ = pm.Binomial(
-            "bin",
-            p=thetas,
+            "bin_intero",
+            p=theta_intero,
             n=1,
-            observed=np.append(extero_decision, intero_decision),
+            observed=intero_decision,
         )
 
         idata = pm.sample(
