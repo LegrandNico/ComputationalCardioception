@@ -305,7 +305,7 @@ if __name__ == "__main__":
         individual_fit, session=args.session, model=args.model, overwrite=args.overwrite
     )
     pool = mp.Pool(processes=25)
-    pool.map(partial_fn, hrd_df.participant_id.unique()[:5])
+    pool.map(partial_fn, hrd_df.participant_id.unique())
     pool.close()
 
     print("All reports generated successfully.")
