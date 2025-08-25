@@ -1,11 +1,7 @@
-setup-git:
-	git config --global user.email "nicolas.legrand@cas.au.dk"
-	git config --global user.name "LegrandNico"
-
 setup-env:
 	curl -LsSf https://astral.sh/uv/install.sh | sh
 	uv venv
-	bash -c "source .venv/bin/activate"
+	bash source .venv/bin/activate 
 	uv sync
 
 run-jupyterlab:

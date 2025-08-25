@@ -22,6 +22,7 @@ dependencies = [
     "ruff",
     "pingouin",
     "tqdm",
+    "ipykernel>=6.29.5",
 ]
 
 
@@ -34,8 +35,3 @@ ignore = ["D100", "D104"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
-
-[dependency-groups]
-dev = [
-    "ipykernel>=6.29.5",
-]
