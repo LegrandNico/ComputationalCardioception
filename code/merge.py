@@ -115,17 +115,35 @@ for participant_id in tqdm(participants_list):
             idata_weighted_update = az.from_netcdf(path)
 
             posterior = az.extract(idata_weighted_update, group="posterior")
-            sensitivity = posterior["sensitivity"].mean(dim="sample").values
+
+            # interoception ------------------------------------------------------------
+            intero_sensitivity = (
+                posterior["intero_sensitivity"].mean(dim="sample").values
+            )
+            omega_intero = posterior["omega_intero"].mean(dim="sample").values
             pi_cardiac_belief = posterior["pi_cardiac_belief"].mean(dim="sample").values
             sigma_cardiac_prior = (
                 posterior["sigma_cardiac_prior"].mean(dim="sample").values
             )
             mu_cardiac_prior = posterior["mu_cardiac_prior"].mean(dim="sample").values
 
-            logit_interoceptive_sensitivity = (
-                np.log(sensitivity)
-                + np.log(pi_cardiac_belief)
-                + np.log((1 / sigma_cardiac_prior**2) - sensitivity * pi_cardiac_belief)
+            logit_interoceptive_sensitivity = np.log(
+                intero_sensitivity / (1 - intero_sensitivity)
+            )
+
+            # exteroception ------------------------------------------------------------
+            extero_sensitivity = (
+                posterior["extero_sensitivity"].mean(dim="sample").values
+            )
+            omega_extero = posterior["omega_extero"].mean(dim="sample").values
+            pi_extero_belief = posterior["pi_extero_belief"].mean(dim="sample").values
+            sigma_extero_prior = (
+                posterior["sigma_extero_prior"].mean(dim="sample").values
+            )
+            mu_extero_prior = posterior["mu_extero_prior"].mean(dim="sample").values
+
+            logit_exteroceptive_sensitivity = np.log(
+                extero_sensitivity / (1 - extero_sensitivity)
             )
 
             weighted_update_df = pd.concat(
@@ -135,11 +153,16 @@ for participant_id in tqdm(participants_list):
                         {
                             "participant_id": [participant_id],
                             "session": [session],
-                            "sensitivity": sensitivity,
+                            "intero_sensitivity": intero_sensitivity,
+                            "extero_sensitivity": extero_sensitivity,
                             "pi_cardiac_belief": pi_cardiac_belief,
+                            "pi_extero_belief": pi_extero_belief,
                             "sigma_cardiac_prior": sigma_cardiac_prior,
+                            "sigma_extero_prior": sigma_extero_prior,
                             "mu_cardiac_prior": mu_cardiac_prior,
-                            "logit_interoceptive_sensitivity": mu_cardiac_prior,
+                            "mu_extero_prior": mu_extero_prior,
+                            "logit_interoceptive_sensitivity": logit_interoceptive_sensitivity,
+                            "logit_exteroceptive_sensitivity": logit_exteroceptive_sensitivity,
                         }
                     ),
                 ],

@@ -208,12 +208,17 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
 
         # only keep the variables of interest
         vars_to_keep = [
-            "sensitivity",
+            "extero_sensitivity",
+            "intero_sensitivity",
             "mu_cardiac_prior",
+            "mu_extero_prior",
+            "sigma_extero_prior",
             "sigma_cardiac_prior",
             "pi_cardiac_belief",
+            "pi_extero_belief",
             "extero_std",
-            "w",
+            "omega_intero",
+            "omega_extero",
         ]
         idata_weighted_update.posterior = idata_weighted_update.posterior[vars_to_keep]
 
@@ -300,7 +305,7 @@ if __name__ == "__main__":
         individual_fit, session=args.session, model=args.model, overwrite=args.overwrite
     )
     pool = mp.Pool(processes=25)
-    pool.map(partial_fn, hrd_df.participant_id.unique()[:2])
+    pool.map(partial_fn, hrd_df.participant_id.unique()[:5])
     pool.close()
 
     print("All reports generated successfully.")
