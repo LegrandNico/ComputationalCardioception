@@ -76,6 +76,8 @@ for participant_id in tqdm(participants_list):
             posterior = az.extract(idata_cardiac_believing, group="posterior")
             intero_mean = posterior["intero_mean"].mean(dim="sample").values
             intero_std = posterior["intero_std"].mean(dim="sample").values
+            extero_mean = posterior["extero_mean"].mean(dim="sample").values
+            extero_std = posterior["extero_std"].mean(dim="sample").values
 
             cardiac_believing_df = pd.concat(
                 [
@@ -86,6 +88,8 @@ for participant_id in tqdm(participants_list):
                             "session": [session],
                             "intero_mean": intero_mean,
                             "intero_std": intero_std,
+                            "extero_mean": extero_mean,
+                            "extero_std": extero_std,
                         }
                     ),
                 ],

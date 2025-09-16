@@ -10,7 +10,6 @@ from models.utils import cumulative_normal
 
 def cardiac_believing(
     intero_tone_2: np.ndarray,
-    extero_tone_1: np.ndarray,
     extero_tone_2: np.ndarray,
     extero_decision: np.ndarray,
     intero_decision: np.ndarray,
@@ -20,17 +19,16 @@ def cardiac_believing(
 ):
     """Bayesian psychophysics model of cardiac believing."""
     with pm.Model() as model:
-        # exteroception ------------------------------
-        extero_threshold = pm.Uniform(
-            "extero_threshold", lower=-50, upper=50, shape=(n,)
-        )
-        extero_slope = pm.Uniform("extero_slope", lower=0.1, upper=30, shape=(n,))
+        # exteroception ----------------------------------------------------------------
+        # ------------------------------------------------------------------------------
+        extero_mean = pm.Uniform("extero_mean", lower=5, upper=200, shape=(n,))
+        extero_std = pm.Uniform("extero_std", lower=0.1, upper=60, shape=(n,))
         theta_extero = pm.Deterministic(
             "theta_extero",
             cumulative_normal(
-                extero_tone_2 - extero_tone_1,
-                extero_threshold[participant_codes_extero],
-                extero_slope[participant_codes_extero],
+                extero_tone_2,
+                extero_mean[participant_codes_extero],
+                extero_std[participant_codes_extero],
             ),
         )
 
@@ -41,7 +39,8 @@ def cardiac_believing(
             observed=extero_decision,
         )
 
-        # interoception ------------------------------
+        # interoception ----------------------------------------------------------------
+        # ------------------------------------------------------------------------------
         intero_mean = pm.Uniform("intero_mean", lower=5, upper=200, shape=(n,))
         intero_std = pm.Uniform("intero_std", lower=0.1, upper=60, shape=(n,))
         theta_intero = pm.Deterministic(
