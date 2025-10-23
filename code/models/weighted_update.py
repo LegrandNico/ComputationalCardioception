@@ -26,15 +26,15 @@ def weighted_update(
 ):
     """Weighted Bayesian update for interoception trials."""
     with pm.Model() as model:
-        # exteroception ------------------------------
+        # exteroception ----------------------------------------------------------------
 
         # priors over cardiac beliefs
         mu_extero_prior = pm.Uniform("mu_extero_prior", lower=20, upper=150, shape=(n,))
         sigma_extero_prior = pm.Uniform(
-            "sigma_extero_prior", lower=0.1, upper=30, shape=(n,)
+            "sigma_extero_prior", lower=2.0, upper=30, shape=(n,)
         )
 
-        extero_std = pm.Uniform("extero_std", lower=0.1, upper=30, shape=(n,))
+        extero_std = pm.Uniform("extero_std", lower=2.0, upper=30, shape=(n,))
         omega_extero = pm.Beta("omega_extero", 1, 1, shape=(n,))
 
         # update cardiac beliefs using physiological inputs
@@ -84,17 +84,19 @@ def weighted_update(
             observed=extero_decision,
         )
 
-        # interoception ------------------------------
+        # interoception ----------------------------------------------------------------
 
         # priors over cardiac beliefs
         mu_cardiac_prior = pm.Uniform(
             "mu_cardiac_prior", lower=20, upper=150, shape=(n,)
         )
         sigma_cardiac_prior = pm.Uniform(
-            "sigma_cardiac_prior", lower=0.1, upper=30, shape=(n,)
+            "sigma_cardiac_prior", lower=2.0, upper=30, shape=(n,)
         )
 
-        interoceptive_precision = 1.0
+        interoceptive_precision = pm.Uniform(
+            "interoceptive_precision", lower=0.01, upper=1.0, shape=(n,)
+        )
         omega_intero = pm.Beta("omega_intero", 1, 1, shape=(n,))
 
         # update cardiac beliefs using physiological inputs
@@ -136,6 +138,8 @@ def weighted_update(
                 ),
             ),
         )
+        
+        _ = pm.Deterministic("cardiac_belief", pt.mean(mus_cardiac_belief))
 
         _ = pm.Binomial(
             "bin_intero",
