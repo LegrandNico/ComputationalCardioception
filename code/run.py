@@ -219,6 +219,7 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
             "omega_intero",
             "omega_extero",
             "cardiac_belief",
+            "auditory_belief",
             "interoceptive_precision",
         ]
         idata_weighted_update.posterior = idata_weighted_update.posterior[vars_to_keep]

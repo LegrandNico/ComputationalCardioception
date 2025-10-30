@@ -76,6 +76,8 @@ def weighted_update(
                 ),
             ),
         )
+        
+        _ = pm.Deterministic("auditory_belief", pt.mean(mus_extero_belief))
 
         _ = pm.Binomial(
             "bin_extero",
