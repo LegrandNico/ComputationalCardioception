@@ -6,7 +6,7 @@ setup-env:
 
 jupyterlab:
 	uv run ipython kernel install --user --env VIRTUAL_ENV $(pwd)/.venv --name=computational_cardioception
-	uv run --with jupyter jupyter lab --port 4444
+	uv run --with jupyter jupyter lab --port 5555
 
 pre-commit:
 	uv run pre-commit install
@@ -21,3 +21,9 @@ lint:
 run-models:
 	@echo "--- 🧪 Running models ---"
 	bash scripts.sh
+
+merge:
+	uv run python code/merge.py
+
+comparison:
+	uv run python code/comparison.py
