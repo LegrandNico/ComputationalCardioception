@@ -1,8 +1,5 @@
 # Author: Nicolas Legrand <nicolas.legrand@cas.au.dk>
 
-import pytensor
-
-pytensor.config.mode == "NUMBA"
 import pymc as pm
 import numpy as np
 import pytensor.tensor as pt
@@ -33,7 +30,7 @@ def weighted_update(
         sigma_extero_prior = pm.Uniform(
             "sigma_extero_prior", lower=2.0, upper=30, shape=(n,)
         )
-
+        exteroceptive_precision = pt.ones((n,))
         extero_std = pm.Uniform("extero_std", lower=2.0, upper=30, shape=(n,))
         omega_extero = pm.Beta("omega_extero", 1, 1, shape=(n,))
 
@@ -41,8 +38,8 @@ def weighted_update(
         pi_extero_belief = pm.Deterministic(
             "pi_extero_belief",
             weighted_bayesian_update_precision(
-                pi_0=1 / (sigma_extero_prior**2),
-                pi_1=1 / (extero_std**2),
+                pi_0=1 / (sigma_extero_prior ** 2),
+                pi_1=exteroceptive_precision,
                 omega=omega_extero,
             ),
         )
@@ -53,7 +50,7 @@ def weighted_update(
                 mu_0=mu_extero_prior[participant_codes_extero],
                 mu_1=extero_tone_1,
                 pi_0=1 / (sigma_extero_prior[participant_codes_extero] ** 2),
-                pi_1=1 / (extero_std**2),
+                pi_1=exteroceptive_precision,
                 pi=pi_extero_belief[participant_codes_extero],
                 omega=omega_extero[participant_codes_extero],
             ),
@@ -61,7 +58,7 @@ def weighted_update(
 
         _ = pm.Deterministic(
             "extero_sensitivity",
-            (omega_extero * (1 / (extero_std**2))) / pi_extero_belief,
+            (omega_extero * exteroceptive_precision) / pi_extero_belief[0],
         )
 
         theta_extero = pm.Deterministic(
@@ -71,8 +68,7 @@ def weighted_update(
                 0.0,
                 extero_tone_2 - mus_extero_belief,
                 pt.sqrt(
-                    (1 / pi_extero_belief[participant_codes_extero])
-                    + extero_std[participant_codes_extero] ** 2
+                    2 * extero_std[participant_codes_extero] ** 2
                 ),
             ),
         )
@@ -93,13 +89,12 @@ def weighted_update(
             "mu_cardiac_prior", lower=20, upper=150, shape=(n,)
         )
         sigma_cardiac_prior = pm.Uniform(
-            "sigma_cardiac_prior", lower=2.0, upper=30, shape=(n,)
+            "sigma_cardiac_prior", lower=0.1, upper=50, shape=(n,)
         )
 
-        interoceptive_precision = pm.Uniform(
-            "interoceptive_precision", lower=0.01, upper=1.0, shape=(n,)
-        )
+        interoceptive_precision = 1.0
         omega_intero = pm.Beta("omega_intero", 1, 1, shape=(n,))
+        intero_std = pm.Uniform("intero_std", lower=0.1, upper=30)
 
         # update cardiac beliefs using physiological inputs
         pi_cardiac_belief = pm.Deterministic(
@@ -135,8 +130,7 @@ def weighted_update(
                 0.0,
                 intero_tone_2 - mus_cardiac_belief,
                 pt.sqrt(
-                    (1 / pi_cardiac_belief[participant_codes_intero])
-                    + extero_std[participant_codes_intero] ** 2
+                    intero_std ** 2 + extero_std[participant_codes_intero] ** 2
                 ),
             ),
         )

@@ -10,7 +10,7 @@ import warnings
 warnings.filterwarnings("ignore")  # az.compare will throw warnings
 plt.rcParams["figure.constrained_layout.use"] = True
 
-hrd_path = Path.cwd().parent.parent / "data" / "hrd.csv"
+hrd_path = Path.cwd() / "data" / "hrd.csv"
 hrd_df = pd.read_csv(hrd_path, index_col=0, low_memory=False)
 participants_list = hrd_df.participant_id.unique()
 
@@ -19,28 +19,28 @@ model_comparison_df = pd.DataFrame([])
 for participant_id in tqdm(participants_list):
     for session in [1, 2]:
         standard_path = (
-            Path().cwd().parent.parent
+            Path().cwd()
             / "results"
             / "idata"
             / f"standard_model_session{session}_{participant_id}.nc"
         )
 
         weighted_update_path = (
-            Path().cwd().parent.parent
+            Path().cwd()
             / "results"
             / "idata"
             / f"weighted_update_session{session}_{participant_id}.nc"
         )
 
         cardiac_believing_path = (
-            Path().cwd().parent.parent
+            Path().cwd()
             / "results"
             / "idata"
             / f"cardiac_believing_session{session}_{participant_id}.nc"
         )
 
         cardiac_hgf_path = (
-            Path().cwd().parent.parent
+            Path().cwd()
             / "results"
             / "idata"
             / f"cardiac_hgf_session{session}_{participant_id}.nc"

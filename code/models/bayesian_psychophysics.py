@@ -53,7 +53,7 @@ def bayesian_psychophysics(
             cumulative_normal(
                 intero_tone_2 - heart_rate,
                 intero_threshold[participant_codes_intero],
-                intero_slope[participant_codes_intero],
+                pt.sqrt(intero_slope[participant_codes_intero]**2 + extero_slope[participant_codes_intero]**2),
             ),
         )
 

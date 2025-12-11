@@ -140,6 +140,7 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
             return
         idata_cardiac_believing, shared_perceptive_noise = cardiac_believing(
             intero_tone_2=intero_tone_2,
+            extero_tone_1=extero_tone_1,
             extero_tone_2=extero_tone_2,
             extero_decision=extero_decision,
             intero_decision=intero_decision,
@@ -152,8 +153,8 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
         vars_to_keep = [
             "intero_mean",
             "intero_std",
-            "extero_mean",
-            "extero_std",
+            "extero_threshold",
+            "extero_slope",
         ]
         idata_cardiac_believing.posterior = idata_cardiac_believing.posterior[
             vars_to_keep
@@ -216,11 +217,11 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
             "pi_cardiac_belief",
             "pi_extero_belief",
             "extero_std",
+            "intero_std",
             "omega_intero",
             "omega_extero",
             "cardiac_belief",
             "auditory_belief",
-            "interoceptive_precision",
         ]
         idata_weighted_update.posterior = idata_weighted_update.posterior[vars_to_keep]
 

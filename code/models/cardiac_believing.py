@@ -1,8 +1,6 @@
 # Author: Nicolas Legrand <nicolas.legrand@cas.au.dk>
 
-import pytensor
-
-pytensor.config.mode == "NUMBA"
+import pytensor.tensor as pt
 import pymc as pm
 import numpy as np
 from models.utils import cumulative_normal
@@ -10,6 +8,7 @@ from models.utils import cumulative_normal
 
 def cardiac_believing(
     intero_tone_2: np.ndarray,
+    extero_tone_1: np.ndarray,
     extero_tone_2: np.ndarray,
     extero_decision: np.ndarray,
     intero_decision: np.ndarray,
@@ -21,14 +20,16 @@ def cardiac_believing(
     with pm.Model() as model:
         # exteroception ----------------------------------------------------------------
         # ------------------------------------------------------------------------------
-        extero_mean = pm.Uniform("extero_mean", lower=5, upper=200, shape=(n,))
-        extero_std = pm.Uniform("extero_std", lower=0.1, upper=60, shape=(n,))
+        extero_threshold = pm.Uniform(
+            "extero_threshold", lower=-50, upper=50, shape=(n,)
+        )
+        extero_slope = pm.Uniform("extero_slope", lower=0.1, upper=30, shape=(n,))
         theta_extero = pm.Deterministic(
             "theta_extero",
             cumulative_normal(
-                extero_tone_2,
-                extero_mean[participant_codes_extero],
-                extero_std[participant_codes_extero],
+                extero_tone_2 - extero_tone_1,
+                extero_threshold[participant_codes_extero],
+                extero_slope[participant_codes_extero],
             ),
         )
 
@@ -48,7 +49,7 @@ def cardiac_believing(
             cumulative_normal(
                 intero_tone_2,
                 intero_mean[participant_codes_intero],
-                intero_std[participant_codes_intero],
+                pt.sqrt(intero_std[participant_codes_intero]**2 + extero_slope[participant_codes_intero]**2),
             ),
         )
 

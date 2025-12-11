@@ -76,8 +76,8 @@ for participant_id in tqdm(participants_list):
             posterior = az.extract(idata_cardiac_believing, group="posterior")
             intero_mean = posterior["intero_mean"].mean(dim="sample").values
             intero_std = posterior["intero_std"].mean(dim="sample").values
-            extero_mean = posterior["extero_mean"].mean(dim="sample").values
-            extero_std = posterior["extero_std"].mean(dim="sample").values
+            extero_threshold = posterior["extero_threshold"].mean(dim="sample").values
+            extero_slope = posterior["extero_slope"].mean(dim="sample").values
 
             cardiac_believing_df = pd.concat(
                 [
@@ -88,8 +88,8 @@ for participant_id in tqdm(participants_list):
                             "session": [session],
                             "intero_mean": intero_mean,
                             "intero_std": intero_std,
-                            "extero_mean": extero_mean,
-                            "extero_std": extero_std,
+                            "extero_threshold": extero_threshold,
+                            "extero_slope": extero_slope,
                         }
                     ),
                 ],
@@ -140,6 +140,9 @@ for participant_id in tqdm(participants_list):
             auditory_belief = (
                 posterior["auditory_belief"].mean(dim="sample").values
             )
+            intero_std = (
+                posterior["intero_std"].mean(dim="sample").values
+            )
 
             # exteroception ------------------------------------------------------------
             extero_sensitivity = (
@@ -155,6 +158,9 @@ for participant_id in tqdm(participants_list):
             logit_exteroceptive_sensitivity = np.log(
                 extero_sensitivity / (1 - extero_sensitivity)
             )
+            extero_std = (
+                posterior["extero_std"].mean(dim="sample").values
+            )
 
             weighted_update_df = pd.concat(
                 [
@@ -168,11 +174,13 @@ for participant_id in tqdm(participants_list):
                             "intero_sensitivity": intero_sensitivity,
                             "extero_sensitivity": extero_sensitivity,
                             "pi_cardiac_belief": pi_cardiac_belief,
-                            "pi_extero_belief": pi_extero_belief,
+                            "pi_extero_belief": pi_extero_belief[0],
                             "sigma_cardiac_prior": sigma_cardiac_prior,
                             "sigma_extero_prior": sigma_extero_prior,
                             "mu_cardiac_prior": mu_cardiac_prior,
                             "mu_extero_prior": mu_extero_prior,
+                            "extero_std": extero_std,
+                            "intero_std": intero_std,
                             "logit_interoceptive_sensitivity": logit_interoceptive_sensitivity,
                             "logit_exteroceptive_sensitivity": logit_exteroceptive_sensitivity,
                         }
