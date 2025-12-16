@@ -38,7 +38,7 @@ def weighted_update(
         pi_extero_belief = pm.Deterministic(
             "pi_extero_belief",
             weighted_bayesian_update_precision(
-                pi_0=1 / (sigma_extero_prior ** 2),
+                pi_0=1 / (sigma_extero_prior**2),
                 pi_1=exteroceptive_precision,
                 omega=omega_extero,
             ),
@@ -67,12 +67,10 @@ def weighted_update(
             - cumulative_normal(
                 0.0,
                 extero_tone_2 - mus_extero_belief,
-                pt.sqrt(
-                    2 * extero_std[participant_codes_extero] ** 2
-                ),
+                pt.sqrt(2 * extero_std[participant_codes_extero] ** 2),
             ),
         )
-        
+
         _ = pm.Deterministic("auditory_belief", pt.mean(mus_extero_belief))
 
         _ = pm.Binomial(
@@ -129,12 +127,10 @@ def weighted_update(
             - cumulative_normal(
                 0.0,
                 intero_tone_2 - mus_cardiac_belief,
-                pt.sqrt(
-                    intero_std ** 2 + extero_std[participant_codes_intero] ** 2
-                ),
+                pt.sqrt(intero_std**2 + extero_std[participant_codes_intero] ** 2),
             ),
         )
-        
+
         _ = pm.Deterministic("cardiac_belief", pt.mean(mus_cardiac_belief))
 
         _ = pm.Binomial(
