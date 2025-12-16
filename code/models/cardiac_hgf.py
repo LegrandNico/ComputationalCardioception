@@ -90,15 +90,27 @@ def cardiac_hgf(
             + (1 / intero_network.node_trajectories[2]["precision"])
         ),
     )
-    
+
     thetas = jnp.clip(
         jnp.append(jnp.array(theta_extero), jnp.array(theta_intero)), 1e-12, 1 - 1e-12
     )
-    
+
     # we have to store the cardiac belief in the array to return it
     cardiac_belief = intero_network.node_trajectories[1]["mean"].mean()
 
-    return  jnp.append(cardiac_belief, thetas)
+    interoceptive_sensitivity = jnp.log(
+        intero_network.node_trajectories[0]["expected_precision"][-1]
+    ) - jnp.log(intero_network.node_trajectories[1]["expected_precision"][-1])
+    exteroceptive_sensitivity = jnp.log(
+        extero_network.node_trajectories[0]["expected_precision"][-1]
+    ) - jnp.log(extero_network.node_trajectories[1]["expected_precision"][-1])
+
+    return jnp.append(
+        jnp.array(
+            [cardiac_belief, interoceptive_sensitivity, exteroceptive_sensitivity]
+        ),
+        thetas,
+    )
 
 
 def get_cardiac_hgf_op(
@@ -310,10 +322,12 @@ def sample_cardiac_hgf(
                 exteroceptive_mean,
             ),
         )
-        
-        thetas = hgf_output[1:]
-        
+
+        thetas = hgf_output[3:]
+
         _ = pm.Deterministic("cardiac_belief", hgf_output[0])
+        _ = pm.Deterministic("interoceptive_sensitivity", hgf_output[1])
+        _ = pm.Deterministic("exteroceptive_sensitivity", hgf_output[2])
 
         _ = pm.Binomial(
             "bin_extero",
