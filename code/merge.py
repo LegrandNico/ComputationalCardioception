@@ -227,26 +227,21 @@ for participant_id in tqdm(participants_list):
             exteroceptive_tonic_volatility = (
                 posterior["exteroceptive_tonic_volatility"].mean(dim="sample").values
             )
+            logit_interoceptive_sensitivity = (
+                posterior["interoceptive_sensitivity"].mean(dim="sample").values
+            )
+            logit_exteroceptive_sensitivity = (
+                posterior["exteroceptive_sensitivity"].mean(dim="sample").values
+            )
 
             # recover the implied sensitivity by applying the hgf update
             # for prediction of the precision at the second level
-            pi_1 = 1.0 / (1.0 + np.exp(interoceptive_tonic_volatility))
-            interoceptive_sensitivity = interoceptive_precision / (
-                interoceptive_precision + pi_1
+            interoceptive_sensitivity = 1 / (
+                1 + np.exp(-logit_interoceptive_sensitivity)
             )
 
-            # use the logit of the sensitivity
-            logit_interoceptive_sensitivity = np.log(interoceptive_precision) - np.log(
-                pi_1
-            )
-
-            pi_1 = 1.0 / (1.0 + np.exp(exteroceptive_tonic_volatility))
-            exteroceptive_sensitivity = exteroceptive_precision / (
-                exteroceptive_precision + pi_1
-            )
-            # use the logit of the sensitivity
-            logit_exteroceptive_sensitivity = np.log(exteroceptive_precision) - np.log(
-                pi_1
+            exteroceptive_sensitivity = 1 / (
+                1 + np.exp(-logit_exteroceptive_sensitivity)
             )
 
             cardiac_hgf_df = pd.concat(
