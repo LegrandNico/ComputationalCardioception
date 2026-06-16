@@ -99,9 +99,6 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
             "extero_threshold",
             "extero_slope",
         ]
-        idata_bayesian_psychophysics.posterior = idata_bayesian_psychophysics.posterior[
-            vars_to_keep
-        ]
 
         # compute the log-likelihood
         pm.compute_log_likelihood(
@@ -113,7 +110,9 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
         # save the samples
         DataTree.from_dict(
             {
-                "posterior": idata_bayesian_psychophysics.posterior.to_dataset(),
+                "posterior": idata_bayesian_psychophysics.posterior.to_dataset()[
+                    vars_to_keep
+                ],
                 "log_likelihood": idata_bayesian_psychophysics.log_likelihood.to_dataset(),
             }
         ).to_netcdf(
@@ -157,9 +156,6 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
             "extero_threshold",
             "extero_slope",
         ]
-        idata_cardiac_believing.posterior = idata_cardiac_believing.posterior[
-            vars_to_keep
-        ]
         # compute the log-likelihood
         pm.compute_log_likelihood(
             idata_cardiac_believing,
@@ -170,7 +166,9 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
         # save the samples
         DataTree.from_dict(
             {
-                "posterior": idata_cardiac_believing.posterior.to_dataset(),
+                "posterior": idata_cardiac_believing.posterior.to_dataset()[
+                    vars_to_keep
+                ],
                 "log_likelihood": idata_cardiac_believing.log_likelihood.to_dataset(),
             }
         ).to_netcdf(
@@ -225,7 +223,6 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
             "cardiac_belief",
             "auditory_belief",
         ]
-        idata_weighted_update.posterior = idata_weighted_update.posterior[vars_to_keep]
 
         # compute the log-likelihood
         pm.compute_log_likelihood(
@@ -235,7 +232,7 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
         # save the samples
         DataTree.from_dict(
             {
-                "posterior": idata_weighted_update.posterior.to_dataset(),
+                "posterior": idata_weighted_update.posterior.to_dataset()[vars_to_keep],
                 "log_likelihood": idata_weighted_update.log_likelihood.to_dataset(),
             }
         ).to_netcdf(
