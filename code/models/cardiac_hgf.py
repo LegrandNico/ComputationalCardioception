@@ -1,16 +1,12 @@
 # Author: Nicolas Legrand <nicolas.legrand@cas.au.dk>
 
 from pyhgf.model import Network
-from jax import jit, Array, vjp
+from jax import Array
 from jax.scipy.stats.norm import cdf
 import jax.numpy as jnp
 import numpy as np
-from jax.typing import ArrayLike
-from jax.tree_util import Partial
-import pytensor.tensor as pt
-from pytensor.graph.op import Op
-from pytensor.graph.basic import Apply
 import pymc as pm
+from pytensor import wrap_jax
 
 
 def cardiac_hgf(
@@ -26,7 +22,7 @@ def cardiac_hgf(
     """Fit the cardiac hierarchical Gaussian filter to single participant."""
     # create new network structures for this participant
     extero_network = (
-        Network(update_type="unbounded")
+        Network(volatility_updates="unbounded")
         .add_nodes(
             precision=exteroceptive_precision,
             expected_precision=exteroceptive_precision,
@@ -48,7 +44,7 @@ def cardiac_hgf(
     )
 
     intero_network = (
-        Network(update_type="unbounded")
+        Network(volatility_updates="unbounded")
         .add_nodes(
             precision=interoceptive_precision,
             expected_precision=interoceptive_precision,
@@ -117,153 +113,34 @@ def get_cardiac_hgf_op(
     input_data_extero: np.ndarray,
     input_data_intero: np.ndarray,
 ):
-    """Get the cardiac HGF custom operation."""
-    # create the partial function for the group level cardiac HGF
-    partial_cardiac_hgf = Partial(
-        cardiac_hgf,
-        input_data_extero=input_data_extero,
-        input_data_intero=input_data_intero,
-    )
+    """Return a PyTensor-compatible cardiac HGF function built with ``wrap_jax``.
 
-    jitted_cardiac_hgf = jit(partial_cardiac_hgf)
+    ``pytensor.wrap_jax`` transpiles the JAX computation into a PyTensor graph and
+    provides the gradients automatically (via JAX's reverse-mode autodiff), so the
+    manual ``Op``/vector-Jacobian-product machinery is no longer required. The
+    returned callable accepts PyTensor variables and returns the vector of
+    HGF outputs.
+    """
 
-    def vjp_custom_op_jax(
-        interoceptive_precision: ArrayLike,
-        interoceptive_tonic_volatility: ArrayLike,
-        interoceptive_mean: ArrayLike,
-        exteroceptive_precision: ArrayLike,
-        exteroceptive_tonic_volatility: ArrayLike,
-        exteroceptive_mean: ArrayLike,
-        cotangent: ArrayLike,
+    @wrap_jax
+    def cardiac_hgf_op(
+        interoceptive_precision,
+        interoceptive_tonic_volatility,
+        interoceptive_mean,
+        exteroceptive_precision,
+        exteroceptive_tonic_volatility,
+        exteroceptive_mean,
     ):
-        """Get the custom vector Jacobian product for the group level cardiac HGF."""
-        _, vjp_fn = vjp(
-            partial_cardiac_hgf,
+        return cardiac_hgf(
             interoceptive_precision,
             interoceptive_tonic_volatility,
             interoceptive_mean,
             exteroceptive_precision,
             exteroceptive_tonic_volatility,
             exteroceptive_mean,
+            input_data_extero=input_data_extero,
+            input_data_intero=input_data_intero,
         )
-        return vjp_fn(cotangent)
-
-    jitted_vjp_group_level_cardiac_hgf = jit(vjp_custom_op_jax)
-
-    # The CustomOp needs `make_node`, `perform` and `grad`.
-    class CustomOp(Op):
-        """Custom Op for the cardiac HGF."""
-
-        def make_node(
-            self,
-            interoceptive_precision,
-            interoceptive_tonic_volatility,
-            interoceptive_mean,
-            exteroceptive_precision,
-            exteroceptive_tonic_volatility,
-            exteroceptive_mean,
-        ):
-            """Create a node for the cardiac HGF."""
-            # Create a PyTensor node specifying the number and type of inputs / outputs
-
-            # We convert the input into a PyTensor tensor variable
-            inputs = [
-                pt.as_tensor_variable(interoceptive_precision),
-                pt.as_tensor_variable(interoceptive_tonic_volatility),
-                pt.as_tensor_variable(interoceptive_mean),
-                pt.as_tensor_variable(exteroceptive_precision),
-                pt.as_tensor_variable(exteroceptive_tonic_volatility),
-                pt.as_tensor_variable(exteroceptive_mean),
-            ]
-            outputs = [pt.vector(dtype="float64")]
-            return Apply(self, inputs, outputs)
-
-        def perform(self, node, inputs, outputs):
-            """Perform the operation defined by the Op."""
-            # Evaluate the Op result for a specific numerical input
-
-            (
-                interoceptive_precision,
-                interoceptive_tonic_volatility,
-                interoceptive_mean,
-                exteroceptive_precision,
-                exteroceptive_tonic_volatility,
-                exteroceptive_mean,
-            ) = inputs
-            result = jitted_cardiac_hgf(
-                interoceptive_precision,
-                interoceptive_tonic_volatility,
-                interoceptive_mean,
-                exteroceptive_precision,
-                exteroceptive_tonic_volatility,
-                exteroceptive_mean,
-            )
-            # The results should be assigned inplace to the nested list
-            # of outputs provided by PyTensor. If you have multiple
-            # outputs and results, you should assign each at outputs[i][0]
-            outputs[0][0] = np.asarray(result, dtype="float64")
-
-        def grad(self, inputs, output_gradients):
-            """Create a PyTensor expression of the gradient."""
-            # Create a PyTensor expression of the gradient
-            (cotangent,) = output_gradients
-            # We reference the VJP Op created below, which encapsulates
-            # the gradient operation
-            return vjp_custom_op(*inputs, cotangent)
-
-    class VJPCustomOp(Op):
-        """Vector-Jacobian product for the cardiac HGF."""
-
-        def make_node(
-            self,
-            interoceptive_precision,
-            interoceptive_tonic_volatility,
-            interoceptive_mean,
-            exteroceptive_precision,
-            exteroceptive_tonic_volatility,
-            exteroceptive_mean,
-            cotangent,
-        ):
-            """Create a node for the vector-Jacobian product of the cardiac HGF."""
-            # Make sure the two inputs are tensor variables
-            inputs = [
-                pt.as_tensor_variable(interoceptive_precision),
-                pt.as_tensor_variable(interoceptive_tonic_volatility),
-                pt.as_tensor_variable(interoceptive_mean),
-                pt.as_tensor_variable(exteroceptive_precision),
-                pt.as_tensor_variable(exteroceptive_tonic_volatility),
-                pt.as_tensor_variable(exteroceptive_mean),
-                pt.as_tensor_variable(cotangent),
-            ]
-            outputs = [pt.scalar(dtype="float64") for _ in range(6)]
-            return Apply(self, inputs, outputs)
-
-        def perform(self, node, inputs, outputs):
-            """Evaluate the Op result for a specific numerical input."""
-            (
-                interoceptive_precision,
-                interoceptive_tonic_volatility,
-                interoceptive_mean,
-                exteroceptive_precision,
-                exteroceptive_tonic_volatility,
-                exteroceptive_mean,
-                cotangent,
-            ) = inputs
-            result = jitted_vjp_group_level_cardiac_hgf(
-                interoceptive_precision,
-                interoceptive_tonic_volatility,
-                interoceptive_mean,
-                exteroceptive_precision,
-                exteroceptive_tonic_volatility,
-                exteroceptive_mean,
-                cotangent,
-            )
-            for i in range(6):
-                outputs[i][0] = np.asarray(result[i], dtype="float64")
-
-    # Instantiate the Ops
-    cardiac_hgf_op = CustomOp()
-    vjp_custom_op = VJPCustomOp()
 
     return cardiac_hgf_op
 

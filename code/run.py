@@ -11,7 +11,7 @@ from models import (
     weighted_update,
     sample_cardiac_hgf,
 )
-import arviz as az
+from xarray import DataTree
 import argparse
 import multiprocessing as mp
 from functools import partial
@@ -111,11 +111,12 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
         )
 
         # save the samples
-        az.to_netcdf(
-            az.InferenceData(
-                posterior=idata_bayesian_psychophysics.posterior,
-                log_likelihood=idata_bayesian_psychophysics.log_likelihood,
-            ),
+        DataTree.from_dict(
+            {
+                "posterior": idata_bayesian_psychophysics.posterior.to_dataset(),
+                "log_likelihood": idata_bayesian_psychophysics.log_likelihood.to_dataset(),
+            }
+        ).to_netcdf(
             Path().cwd()
             / "results"
             / "idata"
@@ -167,11 +168,12 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
         )
 
         # save the samples
-        az.to_netcdf(
-            az.InferenceData(
-                posterior=idata_cardiac_believing.posterior,
-                log_likelihood=idata_cardiac_believing.log_likelihood,
-            ),
+        DataTree.from_dict(
+            {
+                "posterior": idata_cardiac_believing.posterior.to_dataset(),
+                "log_likelihood": idata_cardiac_believing.log_likelihood.to_dataset(),
+            }
+        ).to_netcdf(
             Path().cwd()
             / "results"
             / "idata"
@@ -231,11 +233,12 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
         )
 
         # save the samples
-        az.to_netcdf(
-            az.InferenceData(
-                posterior=idata_weighted_update.posterior,
-                log_likelihood=idata_weighted_update.log_likelihood,
-            ),
+        DataTree.from_dict(
+            {
+                "posterior": idata_weighted_update.posterior.to_dataset(),
+                "log_likelihood": idata_weighted_update.log_likelihood.to_dataset(),
+            }
+        ).to_netcdf(
             Path().cwd()
             / "results"
             / "idata"
@@ -272,11 +275,12 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
                 idata_cardiac_hgf, model=model_cardiac_hgf, var_names=["bin_intero"]
             )
             # save the samples
-            az.to_netcdf(
-                az.InferenceData(
-                    posterior=idata_cardiac_hgf.posterior,
-                    log_likelihood=idata_cardiac_hgf.log_likelihood,
-                ),
+            DataTree.from_dict(
+                {
+                    "posterior": idata_cardiac_hgf.posterior.to_dataset(),
+                    "log_likelihood": idata_cardiac_hgf.log_likelihood.to_dataset(),
+                }
+            ).to_netcdf(
                 Path().cwd()
                 / "results"
                 / "idata"
