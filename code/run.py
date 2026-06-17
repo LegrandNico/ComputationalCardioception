@@ -69,15 +69,15 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
     ).astype(int)
 
     # 1 - Bayesian psychophysics model -------------------------------------------------
-    if model == "all" or model == "bayesian_psychophysics":
-        if (
-            Path().cwd()
-            / "results"
-            / "idata"
-            / f"standard_model_session{session}_{participant_id}.nc"
-        ).exists() and not overwrite:
-            print(f"Standard model already exists, for {participant_id} skipping.")
-            return
+    standard_nc = (
+        Path().cwd()
+        / "results"
+        / "idata"
+        / f"standard_model_session{session}_{participant_id}.nc"
+    )
+    if (model == "all" or model == "bayesian_psychophysics") and (
+        overwrite or not standard_nc.exists()
+    ):
         idata_bayesian_psychophysics, bayesian_psychophysics_model = (
             bayesian_psychophysics(
                 heart_rate=heart_rate,
@@ -127,17 +127,15 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
         gc.collect()
 
     # 2 - Cardiac believing-------------------------------------------------------------
-    if model == "all" or model == "cardiac_believing":
-        if (
-            Path().cwd()
-            / "results"
-            / "idata"
-            / f"cardiac_believing_session{session}_{participant_id}.nc"
-        ).exists() and not overwrite:
-            print(
-                f"Cardiac believing model already exists, for {participant_id} skipping."
-            )
-            return
+    cardiac_believing_nc = (
+        Path().cwd()
+        / "results"
+        / "idata"
+        / f"cardiac_believing_session{session}_{participant_id}.nc"
+    )
+    if (model == "all" or model == "cardiac_believing") and (
+        overwrite or not cardiac_believing_nc.exists()
+    ):
         idata_cardiac_believing, shared_perceptive_noise = cardiac_believing(
             intero_tone_2=intero_tone_2,
             extero_tone_1=extero_tone_1,
@@ -183,17 +181,15 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
         gc.collect()
 
     # 3 - Weighted update model ------------------------------------------------------------
-    if model == "all" or model == "weighted_update":
-        if (
-            Path().cwd()
-            / "results"
-            / "idata"
-            / f"weighted_update_session{session}_{participant_id}.nc"
-        ).exists() and not overwrite:
-            print(
-                f"Weighted update model already exists, for {participant_id} skipping."
-            )
-            return
+    weighted_update_nc = (
+        Path().cwd()
+        / "results"
+        / "idata"
+        / f"weighted_update_session{session}_{participant_id}.nc"
+    )
+    if (model == "all" or model == "weighted_update") and (
+        overwrite or not weighted_update_nc.exists()
+    ):
         idata_weighted_update, weigthed_update_model = weighted_update(
             heart_rate=heart_rate,
             intero_tone_2=intero_tone_2,
@@ -247,15 +243,15 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
         gc.collect()
 
     # 4 - The cardiac HGF --------------------------------------------------------------
-    if model == "all" or model == "cardiac_hgf":
-        if (
-            Path().cwd()
-            / "results"
-            / "idata"
-            / f"cardiac_hgf_session{session}_{participant_id}.nc"
-        ).exists() and not overwrite:
-            print(f"Cardiac HGF model already exists, for {participant_id} skipping.")
-            return
+    cardiac_hgf_nc = (
+        Path().cwd()
+        / "results"
+        / "idata"
+        / f"cardiac_hgf_session{session}_{participant_id}.nc"
+    )
+    if (model == "all" or model == "cardiac_hgf") and (
+        overwrite or not cardiac_hgf_nc.exists()
+    ):
         input_data_extero = np.array([extero_tone_1, extero_tone_2]).T
         input_data_intero = np.array([heart_rate, intero_tone_2]).T
 
@@ -283,8 +279,14 @@ def individual_fit(participant_id: str, session: int, model: str, overwrite: boo
                 / "idata"
                 / f"cardiac_hgf_session{session}_{participant_id}.nc",
             )
-        except pm.exceptions.SamplingError:
-            pass
+        except Exception as e:
+            # Don't silently drop failures: log the participant and the error so
+            # missing cardiac_hgf fits are visible instead of creating gaps that
+            # later get dropped from the model comparison.
+            print(
+                f"Cardiac HGF model FAILED for {participant_id}: "
+                f"{type(e).__name__}: {e}"
+            )
 
 
 if __name__ == "__main__":

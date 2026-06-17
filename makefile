@@ -1,4 +1,5 @@
 setup-env:
+	sudo apt-get install -y graphviz
 	curl -LsSf https://astral.sh/uv/install.sh | sh
 	uv venv
 	bash source .venv/bin/activate 
@@ -27,3 +28,9 @@ merge:
 
 comparison:
 	uv run python code/comparison.py
+
+run-notebooks:
+	@echo "--- 📓 Running notebooks ---"
+	uv run --with jupyter jupyter nbconvert --to notebook --execute --inplace \
+		--ExecutePreprocessor.kernel_name=python3 \
+		code/notebooks/*.ipynb
