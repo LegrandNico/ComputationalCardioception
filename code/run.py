@@ -308,7 +308,7 @@ if __name__ == "__main__":
     partial_fn = partial(
         individual_fit, session=args.session, model=args.model, overwrite=args.overwrite
     )
-    pool = mp.Pool(processes=25)
+    pool = mp.Pool(processes=10)
     pool.map(partial_fn, hrd_df.participant_id.unique())
     pool.close()
 

@@ -23,6 +23,7 @@ dependencies = [
     "pingouin",
     "tqdm",
     "ipykernel>=6.29.5",
+    "netcdf4>=1.7.4",
 ]
 
 
