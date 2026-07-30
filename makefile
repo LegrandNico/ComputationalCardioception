@@ -34,8 +34,11 @@ merge:
 comparison:
 	uv run python code/comparison.py
 
+# Number of notebooks executed concurrently (JOBS=1 restores serial execution)
+JOBS ?= 4
+
 run-notebooks:
-	@echo "--- 📓 Running notebooks ---"
-	uv run --with jupyter jupyter nbconvert --to notebook --execute --inplace \
-		--ExecutePreprocessor.kernel_name=python3 \
-		code/notebooks/*.ipynb
+	@echo "--- 📓 Running notebooks ($(JOBS) in parallel) ---"
+	@ls code/notebooks/*.ipynb | xargs -P $(JOBS) -I {} \
+		uv run --with jupyter jupyter nbconvert --to notebook --execute --inplace \
+			--ExecutePreprocessor.kernel_name=python3 {}
