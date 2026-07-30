@@ -4,3 +4,4 @@ __pycache__/
 .ipynb_checkpoints
 *.nc
 output.log
+.DS_Store

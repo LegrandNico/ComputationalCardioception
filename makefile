@@ -1,5 +1,10 @@
 setup-env:
-	sudo apt-get install -y graphviz
+	# Graphviz *binaries* (dot) are required by pm.model_to_graphviz
+	if [ "$$(uname)" = "Darwin" ]; then \
+		brew install graphviz; \
+	else \
+		sudo apt-get update && sudo apt-get install -y graphviz; \
+	fi
 	curl -LsSf https://astral.sh/uv/install.sh | sh
 	uv venv
 	bash source .venv/bin/activate 
