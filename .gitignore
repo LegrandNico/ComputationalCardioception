@@ -5,3 +5,4 @@ __pycache__/
 *.nc
 output.log
 .DS_Store
+logs/
