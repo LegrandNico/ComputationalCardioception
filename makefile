@@ -7,7 +7,7 @@ setup-env:
 	fi
 	curl -LsSf https://astral.sh/uv/install.sh | sh
 	uv venv
-	bash source .venv/bin/activate 
+	source .venv/bin/activate 
 	uv sync
 
 jupyterlab:
