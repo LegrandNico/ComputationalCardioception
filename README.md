@@ -39,22 +39,6 @@ We compare four computational models of cardiac interoception, fitted to the beh
 
 ---
 
-## Data
-
-`data/hrd.csv` holds the trial-level HRD data: one row per trial, with `listenBPM` (the reference
-tone or the recorded heart rate), `responseBPM` (the decision tone), the binary `Decision`
-(`"More"` / `"Less"`), the `Modality` (`Intero` / `Extero`), and `Confidence` ratings.
-
-Sessions are reconstructed from the `cohort` and `task` columns:
-
-- **session 1** — `cohort == "vmp1"` and `task == "hrd-session1"`
-- **session 2** — `cohort == "vmp1"` & `task == "hrd-session2"`, *or* `cohort == "vmp2"` & `task == "hrd-session1"`
-
-Participants with fewer than 20 or more than 160 usable interoceptive trials are dropped by
-`code/run.py`, which is why the 549 participants in the file become the 518 reported in the paper.
-
----
-
 ## Installation
 
 Requires **Python 3.12** and [uv](https://docs.astral.sh/uv/). Graphviz *binaries* are also needed —
@@ -112,12 +96,6 @@ Useful flags and knobs:
   on a smaller machine, since each worker runs its own NUTS chains.
 - All stdout/stderr is redirected to `output.log` by `scripts.sh`.
 
-This stage is by far the longest: four models × two sessions × ~500 participants of HMC sampling,
-i.e. hours to overnight depending on the core count. The cardiac HGF is the slowest and the most
-fragile — failures are caught per participant and printed as
-`Cardiac HGF model FAILED for <id>: …` rather than aborting the run, so grep `output.log` before
-trusting the model comparison.
-
 ### 2. Summarise the traces
 
 ```bash
@@ -134,8 +112,6 @@ one row per participant × session into:
 | `results/weighted_update_summary.csv` | Model 3 |
 | `results/cardiac_hgf_summary.csv` | Model 4 |
 
-Missing `.nc` files are silently skipped, so a partial stage 1 produces a partial — but valid —
-summary table.
 
 ### 3. Produce the figure panels
 
@@ -147,16 +123,6 @@ make run-notebooks JOBS=1       # serial, easier to debug
 Executes every notebook in `code/notebooks/` in place with `nbconvert`, writing SVG panels into
 `figures/`. Per-notebook logs go to `logs/notebooks/`, and the target refuses to pretend success:
 failures are listed with the last 25 log lines and the target exits non-zero.
-
-Two caveats worth repeating:
-
-- The target warns if `results/idata/` is missing or empty — the model-comparison and correlation
-  notebooks read the traces directly, not just the summary CSVs, and will fail without them.
-- `nbconvert --inplace` does **not** write on failure, so a failed notebook keeps its *previous*
-  outputs. Any figure it was supposed to regenerate is stale, not missing.
-
-The comparison tables (`results/model_compare.csv`, `results/model_comparison_df.csv`,
-`results/reported_statistics_roc_auc.csv`) are written by the `Figure_5_*` notebooks at this stage.
 
 ### 4. Refresh the README renders
 
